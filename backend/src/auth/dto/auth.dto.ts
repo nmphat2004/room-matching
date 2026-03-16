@@ -1,6 +1,5 @@
 import {
   IsEmail,
-  IsEmpty,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -34,6 +33,6 @@ export class LoginDto {
   email: string;
 
   @ApiProperty({ example: 'password123' })
-  @IsEmpty()
+  @IsNotEmpty()
   password: string;
 }

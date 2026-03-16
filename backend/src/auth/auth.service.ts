@@ -21,11 +21,11 @@ export class AuthService {
     const payload = { sub: userId, email, role };
     return {
       accessToken: this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWR_SECRET'),
+        secret: this.configService.get<string>('JWT_SECRET'),
         expiresIn: '15m',
       }),
       refreshToken: this.jwtService.sign(payload, {
-        secret: this.configService.get<string>('JWR_SECRET'),
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         expiresIn: '7d',
       }),
     };
