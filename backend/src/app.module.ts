@@ -8,7 +8,6 @@ import { ConfigModule } from '@nestjs/config';
 import { UploadModule } from './upload/upload.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { ReviewsModule } from './reviews/reviews.module';
-import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [

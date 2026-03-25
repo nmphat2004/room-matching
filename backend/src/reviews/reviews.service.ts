@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   BadRequestException,
   ForbiddenException,
@@ -86,18 +90,80 @@ export class ReviewsService {
       },
     });
 
+    await this.updateRoomRating(roomId);
+
+    if (dto.comment)
+      this.analyzeSentiment(review.id, dto.comment).catch(console.error);
+
     return review;
   }
 
-  findAll() {
-    return `This action returns all reviews`;
+  async remove(id: string, userId: string, role: string) {
+    const review = await this.prisma.review.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Review not found');
+
+    if (role !== 'ADMIN' && review.reviewerId !== userId)
+      throw new ForbiddenException('Cannot delete this review');
+
+    await this.prisma.review.delete({ where: { id } });
+
+    await this.updateRoomRating(review.roomId);
+
+    return { message: 'Review deleted successfully' };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} review`;
+  private async updateRoomRating(roomId: string) {
+    const result = await this.prisma.review.aggregate({
+      where: { roomId },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+
+    await this.prisma.room.update({
+      where: { id: roomId },
+      data: {
+        avgRating: result._avg.rating ?? 0,
+        reviewCount: result._count.id,
+      },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} review`;
+  private async analyzeSentiment(reviewId: string, comment: string) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Phân tích cảm xúc của đánh giá phòng trọ sau và trả về 1 trong 3 từ: "positive", "negative", "neutral". Chỉ trả về 1 từ duy nhất, không giải thích.
+                
+Đánh giá: "${comment}"`,
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+      );
+
+      const data = await response.json();
+      const sentiment = data.candidates?.[0]?.contents?.parts?.[0]?.text
+        ?.trim()
+        ?.toLowerCase();
+
+      if (['positive', 'negative', 'neutral'].includes(sentiment)) {
+        await this.prisma.review.update({
+          where: { id: reviewId },
+          data: { sentiment },
+        });
+      }
+    } catch (error) {
+      console.log('Sentinent analysis failed:', error);
+    }
   }
 }
