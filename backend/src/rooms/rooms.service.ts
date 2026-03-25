@@ -147,7 +147,7 @@ export class RoomsService {
         ? {
             price: {
               ...(minPrice && { gte: minPrice }),
-              ...(maxPrice && { gte: maxPrice }),
+              ...(maxPrice && { lte: maxPrice }),
             },
           }
         : {}),

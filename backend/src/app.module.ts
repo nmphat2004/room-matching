@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { UploadModule } from './upload/upload.module';
 import { RoomsModule } from './rooms/rooms.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -16,6 +18,7 @@ import { RoomsModule } from './rooms/rooms.module';
     AuthModule,
     UploadModule,
     RoomsModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
