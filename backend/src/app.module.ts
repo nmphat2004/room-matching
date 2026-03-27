@@ -8,6 +8,7 @@ import { ConfigModule } from '@nestjs/config';
 import { UploadModule } from './upload/upload.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     UploadModule,
     RoomsModule,
     ReviewsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
