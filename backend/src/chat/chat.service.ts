@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateConversationDto, SendMessageDto } from './dto/chat.dto';
 
 @Injectable()
 export class ChatService {
@@ -86,11 +87,81 @@ export class ChatService {
     };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} chat`;
+  async getOrCreateConversation(renterId: string, dto: CreateConversationDto) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: dto.roomId },
+    });
+
+    if (!room) throw new NotFoundException('Room not found');
+
+    if (room.ownerId === renterId)
+      throw new ForbiddenException('Cannot chat with yourself');
+
+    const existing = await this.prisma.conversation.findUnique({
+      where: {
+        roomId_renterId: {
+          roomId: dto.roomId,
+          renterId,
+        },
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+          },
+        },
+        renter: { select: { id: true, fullName: true, avatarUrl: true } },
+      },
+    });
+
+    if (existing) return existing;
+
+    return await this.prisma.conversation.create({
+      data: {
+        roomId: dto.roomId,
+        renterId,
+        ownerId: room.ownerId,
+      },
+      include: {
+        room: {
+          select: {
+            id: true,
+            title: true,
+            price: true,
+          },
+        },
+        renter: { select: { id: true, fullName: true, avatarUrl: true } },
+      },
+    });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} chat`;
+  async saveMessage(senderId: string, dto: SendMessageDto) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: dto.conversationId },
+    });
+
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    if (
+      conversation.renterId !== senderId &&
+      conversation.ownerId !== senderId
+    ) {
+      throw new ForbiddenException('Not your conversation');
+    }
+
+    return this.prisma.message.create({
+      data: {
+        conversationId: dto.conversationId,
+        senderId,
+        content: dto.content,
+      },
+      include: {
+        sender: {
+          select: { id: true, fullName: true, avatarUrl: true },
+        },
+      },
+    });
   }
 }
