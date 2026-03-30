@@ -50,6 +50,7 @@ export class RoomsService {
   }
 
   async update(id: string, ownerId: string, dto: UpdateRoomDto) {
+    const { amenityIds, imageUrls, ...rest } = dto;
     const room = await this.prisma.room.findUnique({ where: { id } });
     if (!room) throw new NotFoundException('Room not found');
     if (room.ownerId !== ownerId) throw new ForbiddenException('Not your room');
@@ -57,12 +58,21 @@ export class RoomsService {
     return this.prisma.room.update({
       where: { id },
       data: {
-        ...dto,
-        amenities: dto.amenityIds
+        ...rest,
+        amenities: amenityIds
           ? {
               deleteMany: {},
-              create: dto.amenityIds.map((amenityId) => ({
+              create: amenityIds.map((amenityId) => ({
                 amenityId,
+              })),
+            }
+          : undefined,
+        images: imageUrls
+          ? {
+              deleteMany: {},
+              create: imageUrls.map((url, index) => ({
+                url,
+                isPrimary: index === 0,
               })),
             }
           : undefined,
@@ -119,6 +129,8 @@ export class RoomsService {
       where: { id },
       data: { viewCount: { increment: 1 } },
     });
+
+    return room;
   }
 
   async findAll(dto: SearchRoomDto) {

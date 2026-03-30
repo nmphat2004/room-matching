@@ -7,7 +7,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({ origin: process.env.FRONTEND_URL });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+    }),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Room Matching API')
@@ -21,4 +27,4 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 8080);
   console.log(`Backend running at PORT: ${process.env.PORT ?? 8080}`);
 }
-bootstrap();
+void bootstrap();

@@ -15,7 +15,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async findByRoom(roomId: string, page = 1, limit = 10) {
+  async findByRoom(roomId: string, page: number = 1, limit: number = 10) {
     const room = await this.prisma.room.findUnique({ where: { id: roomId } });
     if (!room) throw new NotFoundException('Room not found');
 
