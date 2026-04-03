@@ -11,7 +11,7 @@ import {
 import { useAuthStore } from '@/stores/auth.store';
 import { Home, LayoutDashboard, LogOut, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
 	const { user, logout } = useAuthStore();
