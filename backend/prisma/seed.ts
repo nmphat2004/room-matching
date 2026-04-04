@@ -4,16 +4,14 @@ const prisma = new PrismaClient();
 
 async function main() {
   const amenities = [
-    { name: 'WiFi', icon: 'wifi' },
-    { name: 'Điều hòa', icon: 'air-conditioner' },
-    { name: 'Máy nước nóng', icon: 'water-heater' },
-    { name: 'Giữ xe', icon: 'parking' },
-    { name: 'Thang máy', icon: 'elevator' },
-    { name: 'Bảo vệ 24/7', icon: 'security' },
-    { name: 'Nhà bếp', icon: 'kitchen' },
-    { name: 'Ban công', icon: 'balcony' },
-    { name: 'Tủ lạnh', icon: 'fridge' },
-    { name: 'Máy giặt', icon: 'washing-machine' },
+    { name: 'WiFi', icon: 'Wifi' },
+    { name: 'Điều hòa', icon: 'AirVent' },
+    { name: 'Bãi đỗ xe', icon: 'Car' },
+    { name: 'Thang máy', icon: 'Building2' },
+    { name: 'Bảo vệ 24/7', icon: 'Shield' },
+    { name: 'WC riêng', icon: 'DropLet' },
+    { name: 'Nhà bếp', icon: 'ChefHat' },
+    { name: 'Máy giặt', icon: 'WashingMachine' },
   ];
 
   for (const amenity of amenities) {

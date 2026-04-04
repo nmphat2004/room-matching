@@ -9,7 +9,13 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/auth.store';
-import { Home, LayoutDashboard, LogOut, MessageCircle } from 'lucide-react';
+import {
+	Home,
+	LayoutDashboard,
+	LogOut,
+	MessageCircle,
+	PlusCircle,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -23,26 +29,24 @@ const Header = () => {
 	};
 
 	return (
-		<header className='sticky top-0 z-50 w-full border-b bg-white shadow-sm'>
-			<div className='container mx-auto flex h-16 items-center justify-between px-4'>
+		<header className='sticky top-0 z-50 bg-white border-b border-border'>
+			<div className='flex max-w-7xl mx-auto px-4 py-4 items-center justify-between'>
 				{/* Logo */}
-				<Link
-					href='/'
-					className='flex items-center gap-2 font-bold text-xl text-blue-600'>
-					<Home className='w-6 h-6' />
-					Room Matching
+				<Link href='/' className='flex items-center gap-2'>
+					<Home className='w-6 h-6 text-primary' />
+					<span className='text-xl'>Room Matching</span>
 				</Link>
 
 				{/* Nav */}
-				<nav className='hidden md:flex items-center gap-6 text-sm'>
+				<nav className='hidden md:flex items-center gap-6'>
 					<Link
 						href='/rooms'
-						className='text-gray-600 hover:text-blue-600 transition-colors'>
+						className='text-foreground hover:text-primary transition-colors'>
 						Tìm phòng
 					</Link>
 					<Link
 						href='/roooms?sortBy=rating'
-						className='text-gray-600 hover:text-blue-600 transition-colors'>
+						className='text-foreground hover:text-primary transition-colors'>
 						Đánh giá cao
 					</Link>
 				</nav>
@@ -81,16 +85,21 @@ const Header = () => {
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</>
-					:	<>
+					:	<div className='flex items-center gap-3'>
 							<Link href='/login'>
-								<Button variant='outline'>Đăng nhập</Button>
+								<Button variant='ghost' className='hidden md:inline-flex'>
+									Đăng nhập
+								</Button>
 							</Link>
 							<Link href='/register'>
-								<Button className='bg-orange-500 hover:bg-orange-600'>
+								<Button
+									variant='secondary'
+									className='bg-primary hover:bg-primary/90 text-white'>
+									<PlusCircle className='w-4 h-4 mr-2' />
 									Đăng tin miễn phí
 								</Button>
 							</Link>
-						</>
+						</div>
 					}
 				</div>
 			</div>
