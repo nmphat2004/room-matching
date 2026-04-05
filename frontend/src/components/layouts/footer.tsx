@@ -75,7 +75,7 @@ const Footer = () => {
 							</div>
 							<div className='flex items-center gap-2'>
 								<Mail className='w-4 h-4' />
-								<span>contact@phongtro.vn</span>
+								<span>contact@room-matching.vn</span>
 							</div>
 							<div className='flex items-center gap-3 mt-4'>
 								<a href='#' className='text-primary hover:text-primary/80'>

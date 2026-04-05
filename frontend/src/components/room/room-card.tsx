@@ -1,5 +1,5 @@
 import { Room } from '@/types';
-import { MapPin, Maximize, Maximize2 } from 'lucide-react';
+import { Badge, MapPin, Maximize, Maximize2, Star } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import AmenityIcon from './amenity-icon';
@@ -45,10 +45,10 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 							</div>
 
 							<div className='inline-flex items-baseline gap-1'>
-								<span className='text-lg text-accent'>
+								<span className='text-2xl text-accent'>
 									{formatPrice(room.price)}
 								</span>
-								<span className='text-lg text-muted-foreground'>
+								<span className='text-base text-muted-foreground'>
 									{'đ/tháng'}
 								</span>
 							</div>
@@ -71,16 +71,26 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 										/>
 									))}
 								</div>
-								{/* <div className='flex items-center gap-2'>
-									<StarRating
-										rating={rating}
-										totalReviews={reviewCount}
-										size='sm'
-									/>
-									<Badge variant={status}>
-										{status === 'available' ? 'Còn phòng' : 'Đã cho thuê'}
+								<div className='flex items-center gap-2'>
+									<div className='flex items-center gap-1.5'>
+										<div className='flex items-center gap-0.5'>
+											{[1, 2, 3, 4, 5].map((star) => (
+												<Star
+													key={star}
+													className={`w-3.5 h-3.5 ${star <= room.avgRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'} hover:cursor-pointer hover:scale-110 hover:transition-transform`}
+												/>
+											))}
+										</div>
+										{room.reviewCount !== undefined && (
+											<span className='text-xs text-muted-foreground'>
+												({room.reviewCount})
+											</span>
+										)}
+									</div>
+									<Badge className='bg-secondary text-secondary-foreground'>
+										{room.status === 'AVAILABLE' ? 'Còn phòng' : 'Đã cho thuê'}
 									</Badge>
-								</div> */}
+								</div>
 							</div>
 						</div>
 					</div>
@@ -88,6 +98,65 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 			</Link>
 		);
 	}
+
+	return (
+		<Link href={`/rooms/${room.id}`}>
+			<div className='bg-card border border-border rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-200'>
+				{/* Ảnh */}
+				<div className='relative'>
+					{primaryImage ?
+						<Image
+							src={primaryImage.url}
+							alt={room.title}
+							fill
+							className='w-full h-48 object-cover'
+						/>
+					:	<div className='w-full h-full flex items-center justify-center text-gray-300'>
+							<Maximize2 className='w-12 h-12' />
+						</div>
+					}
+				</div>
+
+				{/* Thông tin */}
+				<div className='p-4'>
+					<h3 className='mb-2 line-clamp-1'>{room.title}</h3>
+
+					<div className='inline-flex items-baseline gap-1'>
+						<span className='text-lg text-accent'>
+							{formatPrice(room.price)}
+						</span>
+						<span className='text-sm text-muted-foreground'>{'đ/tháng'}</span>
+					</div>
+
+					<div className='flex items-center gap-1.5 text-sm text-muted-foreground mt-2'>
+						<MapPin className='w-4 h-4' />
+						<span className='line-clamp-1'>{room.address}</span>
+					</div>
+
+					<div className='flex items-center justify-between mt-3'>
+						<div className='flex items-center gap-1.5'>
+							<div className='flex items-center gap-0.5'>
+								{[1, 2, 3, 4, 5].map((star) => (
+									<Star
+										key={star}
+										className={`w-3.5 h-3.5 ${star <= room.avgRating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'} hover:cursor-pointer hover:scale-110 hover:transition-transform`}
+									/>
+								))}
+							</div>
+							{room.reviewCount !== undefined && (
+								<span className='text-xs text-muted-foreground'>
+									({room.reviewCount})
+								</span>
+							)}
+						</div>
+						<Badge className='bg-secondary text-secondary-foreground'>
+							{room.status === 'AVAILABLE' ? 'Còn phòng' : 'Đã cho thuê'}
+						</Badge>
+					</div>
+				</div>
+			</div>
+		</Link>
+	);
 };
 
 export default RoomCard;
