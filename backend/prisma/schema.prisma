@@ -47,6 +47,10 @@ model Room {
   title       String
   description String?
   price       Decimal
+  electricityCost       Decimal
+  waterCost       Decimal
+  deposit       Decimal
+  minStay     String
   address     String
   lat         Float?
   lng         Float?

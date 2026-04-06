@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Review } from '@/types';
+import { ReviewResponse } from '@/types';
 import api from '../axios';
 
 export const getReviews = async (roomId: string, page = 1) => {
-	const res = await api.get<Review>(`/rooms/${roomId}/reviews`, {
-		params: page,
+	const res = await api.get<ReviewResponse>(`/rooms/${roomId}/reviews`, {
+		params: { page },
 	});
 	return res.data;
 };

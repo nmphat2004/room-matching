@@ -11,6 +11,10 @@ export interface Room {
 	id: string;
 	title: string;
 	price: number;
+	electricityCost: number;
+	waterCost: number;
+	deposit: number;
+	minStay: string;
 	description?: string;
 	address: string;
 	lat?: number;
@@ -27,6 +31,7 @@ export interface Room {
 		fullName: string;
 		phone?: number;
 		avatarUrl?: string;
+		createdAt: string;
 	};
 	images: RoomImage[];
 	amenities: RoomAmenity[];
@@ -51,11 +56,11 @@ export interface RoomAmenity {
 
 export interface Review {
 	id: string;
-	rating: string;
-	cleanRating: string;
-	landlordRating: string;
-	securityRating: string;
-	locationRating: string;
+	rating: number;
+	cleanRating: number;
+	landlordRating: number;
+	securityRating: number;
+	locationRating: number;
 	comment?: string;
 	sentiment?: string;
 	createdAt: string;
@@ -66,12 +71,29 @@ export interface Review {
 	};
 }
 
+export interface ReviewResponse {
+	data: Review[];
+	avgScores: {
+		rating: number;
+		cleanRating: number;
+		securityRating: number;
+		locationRating: number;
+		landlordRating: number;
+	};
+	meta: {
+		total: number;
+		page: number;
+		limit: number;
+		totalPage: number;
+	};
+}
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	meta: {
 		total: number;
 		page: number;
 		limit: number;
-		totalPages: number;
+		totalPage: number;
 	};
 }

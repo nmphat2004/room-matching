@@ -5,8 +5,8 @@ const prisma = new PrismaClient();
 async function main() {
   const amenities = [
     { name: 'WiFi', icon: 'Wifi' },
-    { name: 'Điều hòa', icon: 'AirVent' },
-    { name: 'Bãi đỗ xe', icon: 'Car' },
+    { name: 'Điều hòa', icon: 'Wind' },
+    { name: 'Giữ xe', icon: 'Car' },
     { name: 'Thang máy', icon: 'Building2' },
     { name: 'Bảo vệ 24/7', icon: 'Shield' },
     { name: 'WC riêng', icon: 'DropLet' },

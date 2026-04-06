@@ -17,6 +17,10 @@ export class RoomsService {
         ownerId,
         title: dto.title,
         price: dto.price,
+        electricityCost: dto.electricityCost,
+        waterCost: dto.waterCost,
+        deposit: dto.deposit,
+        minStay: dto.minStay,
         description: dto.description,
         address: dto.address,
         lat: dto.lat,
@@ -41,7 +45,12 @@ export class RoomsService {
         images: true,
         amenities: { include: { amenity: true } },
         owner: {
-          select: { id: true, fullName: true, phone: true, avatarUrl: true },
+          select: {
+            id: true,
+            fullName: true,
+            phone: true,
+            avatarUrl: true,
+          },
         },
       },
     });

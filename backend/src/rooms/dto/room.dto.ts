@@ -28,6 +28,29 @@ export class CreateRoomDto {
   @Type(() => Number)
   price: number;
 
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  electricityCost: number;
+
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  waterCost: number;
+
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  deposit: number;
+
+  @ApiProperty({ example: '3 tháng' })
+  @IsNotEmpty()
+  @IsString()
+  minStay: string;
+
   @ApiProperty({ example: '123 Nguyễn Huệ, Quận 1, TPHCM' })
   @IsNotEmpty()
   @IsString()
@@ -90,6 +113,29 @@ export class UpdateRoomDto {
   @Min(0)
   @Type(() => Number)
   price: number;
+
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  electricityCost: number;
+
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  waterCost: number;
+
+  @ApiProperty({ required: false })
+  @IsNotEmpty()
+  @Min(0)
+  @Type(() => Number)
+  deposit: number;
+
+  @ApiProperty({ example: '3 tháng' })
+  @IsNotEmpty()
+  @IsString()
+  minStay: string;
 
   @ApiProperty({ required: false })
   @IsNotEmpty()
