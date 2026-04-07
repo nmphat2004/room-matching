@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+import ReviewForm from '@/components/review/review-form';
 import AmenityIcon from '@/components/room/amenity-icon';
 import { PriceTag } from '@/components/room/price-tag';
 import { StarRating } from '@/components/room/star-rating';
@@ -303,7 +305,7 @@ const RoomDetailPage = () => {
 						{/* Review Form */}
 						{user && user.id !== room.owner.id && (
 							<div className='mt-6'>
-								{/* <ReviewForm roomId={room.id} /> */}
+								<ReviewForm roomId={room.id} />
 							</div>
 						)}
 					</div>
