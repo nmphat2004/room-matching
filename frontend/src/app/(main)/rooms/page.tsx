@@ -276,7 +276,7 @@ const RoomsPage = () => {
 						}
 
 						{/* Pagination */}
-						{data && data?.meta.totalPages > 1 && (
+						{data && data?.meta.totalPage > 1 && (
 							<div className='flex justify-center gap-2 mt-8'>
 								<Button
 									variant='outline'
@@ -285,11 +285,11 @@ const RoomsPage = () => {
 									Trước
 								</Button>
 								<span className='flex items-center px-4 text-sm text-gray-600'>
-									Trang {page} / {data?.meta.totalPages}
+									Trang {page} / {data?.meta.totalPage}
 								</span>
 								<Button
 									variant='outline'
-									disabled={page === data?.meta.totalPages}
+									disabled={page === data?.meta.totalPage}
 									onClick={() => setPage((prev) => prev + 1)}>
 									Tiếp
 								</Button>

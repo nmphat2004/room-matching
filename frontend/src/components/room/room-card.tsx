@@ -1,8 +1,10 @@
 import { Room } from '@/types';
-import { Badge, MapPin, Maximize, Maximize2, Star } from 'lucide-react';
+import { MapPin, Maximize, Maximize2, Star } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import AmenityIcon from './amenity-icon';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Props {
 	room: Room;
@@ -20,13 +22,14 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 			<Link href={`/rooms/${room.id}`}>
 				<div className='bg-card border border-border rounded-xl p-4 hover:shadow-lg transition-shadow duration-200 flex gap-4'>
 					{/* Ảnh */}
-					<div className='relative shrink-0'>
+					<div className='relative shrink-0 w-[200px] h-[140px]'>
 						{primaryImage ?
 							<Image
 								src={primaryImage.url}
 								alt={room.title}
 								fill
-								className='w-[200px] h-[140px] rounded-lg object-cover'
+								sizes='200px'
+								className='rounded-lg object-cover'
 							/>
 						:	<div className='w-full h-full flex items-center justify-center text-gray-300'>
 								<Maximize2 className='w-12 h-12' />
@@ -87,7 +90,14 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 											</span>
 										)}
 									</div>
-									<Badge className='bg-secondary text-secondary-foreground'>
+									<Badge
+										variant='outline'
+										className={cn(
+											'rounded-full font-medium',
+											room.status === 'AVAILABLE' ?
+												'bg-emerald-50 text-emerald-600 border-emerald-200'
+											:	'bg-rose-50 text-rose-600 border-rose-200',
+										)}>
 										{room.status === 'AVAILABLE' ? 'Còn phòng' : 'Đã cho thuê'}
 									</Badge>
 								</div>
@@ -103,13 +113,14 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 		<Link href={`/rooms/${room.id}`}>
 			<div className='bg-card border border-border rounded-xl overflow-hidden hover:shadow-lg transition-shadow duration-200'>
 				{/* Ảnh */}
-				<div className='relative'>
+				<div className='relative w-full h-48'>
 					{primaryImage ?
 						<Image
 							src={primaryImage.url}
 							alt={room.title}
 							fill
-							className='w-full h-48 object-cover'
+							sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+							className='object-cover'
 						/>
 					:	<div className='w-full h-full flex items-center justify-center text-gray-300'>
 							<Maximize2 className='w-12 h-12' />
@@ -149,7 +160,14 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 								</span>
 							)}
 						</div>
-						<Badge className='bg-secondary text-secondary-foreground'>
+						<Badge
+							variant='outline'
+							className={cn(
+								'rounded-full font-medium h-8',
+								room.status === 'AVAILABLE' ?
+									'bg-emerald-50 text-emerald-600 border-emerald-200'
+								:	'bg-rose-50 text-rose-600 border-rose-200',
+							)}>
 							{room.status === 'AVAILABLE' ? 'Còn phòng' : 'Đã cho thuê'}
 						</Badge>
 					</div>

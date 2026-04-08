@@ -87,13 +87,17 @@ const Header = () => {
 						</>
 					:	<div className='flex items-center gap-3'>
 							<Link href='/login'>
-								<Button variant='ghost' className='hidden md:inline-flex'>
+								<Button
+									variant='ghost'
+									size='lg'
+									className='hidden md:inline-flex'>
 									Đăng nhập
 								</Button>
 							</Link>
 							<Link href='/register'>
 								<Button
-									variant='secondary'
+									variant='default'
+									size='lg'
 									className='bg-primary hover:bg-primary/90 text-white'>
 									<PlusCircle className='w-4 h-4 mr-2' />
 									Đăng tin miễn phí
