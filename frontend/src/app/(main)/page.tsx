@@ -308,7 +308,7 @@ const HomePage = () => {
 					<p className='mb-6 text-lg text-white'>
 						Đăng tin cho thuê phòng miễn phí và tiếp cận hàng nghìn người thuê
 					</p>
-					<Link href='/post-listing'>
+					<Link href='/post'>
 						<Button
 							variant='default'
 							size='lg'
