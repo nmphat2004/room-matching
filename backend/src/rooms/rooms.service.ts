@@ -16,6 +16,7 @@ export class RoomsService {
       data: {
         ownerId,
         title: dto.title,
+        type: dto.type,
         price: dto.price,
         electricityCost: dto.electricityCost,
         waterCost: dto.waterCost,
@@ -150,6 +151,8 @@ export class RoomsService {
       minArea,
       maxArea,
       minRating,
+      selectedDistrict,
+      selectedAmenities,
       page = 1,
       limit = 10,
       sortBy = 'newest',
@@ -157,6 +160,10 @@ export class RoomsService {
 
     const where: any = {
       status: 'AVAILABLE',
+      ...(selectedDistrict &&
+        selectedDistrict !== 'all' && {
+          address: { contains: selectedDistrict, mode: 'insensitive' },
+        }),
       ...(keyword && {
         OR: [
           { title: { contains: keyword, mode: 'insensitive' } },
@@ -182,6 +189,18 @@ export class RoomsService {
           }
         : {}),
       ...(minRating && { avgRating: { gte: minRating } }),
+      ...(selectedAmenities &&
+        selectedAmenities.length > 0 && {
+          AND: selectedAmenities.map((value) => ({
+            amenities: {
+              some: {
+                amenity: {
+                  value: { contains: value, mode: 'insensitive' },
+                },
+              },
+            },
+          })),
+        }),
     };
 
     const orderBy: any = {

@@ -4,13 +4,6 @@ import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getRooms } from '@/lib/api/room.api';
 import { useQuery } from '@tanstack/react-query';
@@ -24,9 +17,12 @@ const RoomsPage = () => {
 	const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
 	const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
 	const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
+	const [minArea, setMinArea] = useState(searchParams.get('minArea') || 0);
+	const [maxArea, setMaxArea] = useState(searchParams.get('maxArea') || 100);
 	const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest');
-	const [selectedDistrict, setSelectedDistrict] = useState('Quận 1');
+	const [selectedDistrict, setSelectedDistrict] = useState('all');
 	const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+	const [minRating, setMinRating] = useState(searchParams.get('rating') || '');
 	const [layout, setLayout] = useState<'grid' | 'list'>('list');
 	const [page, setPage] = useState(1);
 
@@ -41,28 +37,51 @@ const RoomsPage = () => {
 		'Tân Bình',
 	];
 
+	const areaRanges = [
+		{ label: 'Dưới 20m²', min: 0, max: 20 },
+		{ label: '20-30m²', min: 20, max: 30 },
+		{ label: '30-50m²', min: 30, max: 50 },
+		{ label: 'Trên 50m²', min: 50, max: 1000 },
+	];
+
 	const amenitiesList = [
-		{ value: 'wifi', label: 'WiFi' },
-		{ value: 'ac', label: 'Điều hòa' },
-		{ value: 'parking', label: 'Bãi đỗ xe' },
-		{ value: 'elevator', label: 'Thang máy' },
-		{ value: 'bathroom', label: 'WC riêng' },
-		{ value: 'kitchen', label: 'Bếp' },
-		{ value: 'security', label: 'An ninh' },
-		{ value: 'washing', label: 'Máy giặt' },
+		{ value: 'wifi', name: 'WiFi' },
+		{ value: 'ac', name: 'Điều hòa' },
+		{ value: 'parking', name: 'Giữ xe' },
+		{ value: 'elevator', name: 'Thang máy' },
+		{ value: 'bathroom', name: 'WC riêng' },
+		{ value: 'kitchen', name: 'Bếp' },
+		{ value: 'security', name: 'An ninh' },
+		{ value: 'washing', name: 'Máy giặt' },
 	];
 
 	const { data, isLoading } = useQuery({
-		queryKey: ['rooms', keyword, minPrice, maxPrice, sortBy, page],
+		queryKey: [
+			'rooms',
+			keyword,
+			minPrice,
+			maxPrice,
+			sortBy,
+			selectedDistrict,
+			selectedAmenities,
+			minRating,
+			minArea,
+			maxArea,
+			page,
+		],
 		queryFn: () =>
 			getRooms({
 				keyword: keyword || undefined,
 				minPrice: minPrice ? Number(minPrice) : undefined,
 				maxPrice: maxPrice ? Number(maxPrice) : undefined,
+				minRating: minRating ? Number(minRating) : undefined,
+				selectedDistrict: selectedDistrict || undefined,
+				selectedAmenities,
+				minArea: minArea ? Number(minArea) : undefined,
+				maxArea: maxArea ? Number(maxArea) : undefined,
 				sortBy,
 				page,
 				limit: 12,
-				minRating: 1,
 			}),
 	});
 
@@ -74,6 +93,18 @@ const RoomsPage = () => {
 		);
 	};
 
+	const handleReset = () => {
+		setKeyword('');
+		setMinPrice('');
+		setMaxPrice('');
+		setMinArea(0);
+		setMaxArea(100);
+		setSelectedDistrict('all');
+		setSelectedAmenities([]);
+		setMinRating('');
+		setPage(1); // Nên reset cả trang về 1
+	};
+
 	return (
 		<div className='bg-background min-h-screen'>
 			<div className='max-w-7xl mx-auto px-4 py-6'>
@@ -83,9 +114,12 @@ const RoomsPage = () => {
 						<div className='sticky top-24 bg-card border border-border rounded-xl p-6'>
 							<div className='flex items-center justify-between mb-6'>
 								<h3>Bộ lọc</h3>
-								<button className='text-sm text-primary hover:underline'>
+								<Button
+									onClick={handleReset}
+									variant='default'
+									className='text-sm text-white hover:underline'>
 									Đặt lại
-								</button>
+								</Button>
 							</div>
 
 							{/* Price Range */}
@@ -113,37 +147,45 @@ const RoomsPage = () => {
 							<div className='mb-6'>
 								<Label className='block mb-3'>Diện tích</Label>
 								<div className='space-y-2'>
-									{['Dưới 20m²', '20-30m²', '30-50m²', 'Trên 50m²'].map(
-										(option) => (
-											<Label
-												key={option}
-												className='flex items-center gap-2 cursor-pointer'>
-												<Input
-													type='checkbox'
-													className='w-4 h-4 rounded border-border'
-												/>
-												<span className='text-sm'>{option}</span>
-											</Label>
-										),
-									)}
+									{areaRanges.map((range) => (
+										<Label
+											key={range.label}
+											className='flex items-center gap-2 cursor-pointer'>
+											<input
+												type='checkbox'
+												className='w-4 h-4 rounded border-border'
+												checked={minArea === range.min && maxArea === range.max}
+												onChange={() => {
+													if (minArea === range.min && maxArea === range.max) {
+														// Nếu đang chọn rồi mà click lại thì bỏ lọc
+														setMinArea(0);
+														setMaxArea(100);
+													} else {
+														setMinArea(range.min);
+														setMaxArea(range.max);
+													}
+												}}
+											/>
+											<span className='text-sm'>{range.label}</span>
+										</Label>
+									))}
 								</div>
 							</div>
 
 							{/* District */}
 							<div className='mb-6'>
-								<Label className='block mb-3'>Quận/Huyện</Label>
-								<Select
+								<label className='block mb-3'>Quận/Huyện</label>
+								<select
 									value={selectedDistrict}
-									onValueChange={(val) => val && setSelectedDistrict(val)}>
-									<SelectTrigger className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										{districts.map((district) => (
-											<SelectItem key={district}>{district}</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+									onChange={(e) => setSelectedDistrict(e.target.value)}
+									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
+									<option value='all'>Tất cả</option>
+									{districts.map((district) => (
+										<option key={district} value={district}>
+											{district}
+										</option>
+									))}
+								</select>
 							</div>
 
 							{/* Amenities */}
@@ -160,7 +202,7 @@ const RoomsPage = () => {
 												checked={selectedAmenities.includes(amenity.value)}
 												onChange={() => toggleAmenity(amenity.value)}
 											/>
-											<span className='text-sm'>{amenity.label}</span>
+											<span className='text-sm'>{amenity.name}</span>
 										</Label>
 									))}
 								</div>
@@ -174,18 +216,18 @@ const RoomsPage = () => {
 										<Label
 											key={rating}
 											className='flex items-center gap-2 cursor-pointer'>
-											<Input type='radio' name='rating' className='w-4 h-4' />
+											<Input
+												value={minRating}
+												onChange={(e) => setMinRating(e.target.value)}
+												type='radio'
+												name='rating'
+												className='w-4 h-4'
+											/>
 											<span className='text-sm'>{rating}+ sao</span>
 										</Label>
 									))}
 								</div>
 							</div>
-
-							<Button
-								variant='default'
-								className='w-full h-10 bg-primary text-white'>
-								Áp dụng
-							</Button>
 						</div>
 					</div>
 
@@ -194,14 +236,16 @@ const RoomsPage = () => {
 						<div className='flex items-center justify-between mb-6'>
 							<div>
 								<h2 className='mb-1'>
-									{data?.data.length} phòng tìm thấy tại {selectedDistrict}
+									{!isLoading &&
+										selectedDistrict !== 'all' &&
+										`${data?.data.length} phòng tìm thấy tại ${selectedDistrict}`}
 								</h2>
 								<div className='flex items-center gap-2 flex-wrap'>
 									{selectedAmenities.map((amenity) => (
 										<FilterChip
 											key={amenity}
 											label={
-												amenitiesList.find((a) => a.value === amenity)?.label ||
+												amenitiesList.find((a) => a.value === amenity)?.name ||
 												amenity
 											}
 											active
@@ -212,19 +256,15 @@ const RoomsPage = () => {
 							</div>
 
 							<div className='flex items-center gap-3'>
-								<Select
+								<select
 									value={sortBy}
-									onValueChange={(val) => val && setSortBy(val)}>
-									<SelectTrigger className='border border-border'>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value='newest'>Mới nhất</SelectItem>
-										<SelectItem value='price_asc'>Giá tăng dần</SelectItem>
-										<SelectItem value='price_desc'>Giá giảm dần</SelectItem>
-										<SelectItem value='rating'>Đánh giá cao</SelectItem>
-									</SelectContent>
-								</Select>
+									onChange={(e) => setSortBy(e.target.value)}
+									className='px-4 py-2 rounded-lg border border-border bg-background'>
+									<option value='newest'>Mới nhất</option>
+									<option value='price-asc'>Giá: Thấp đến cao</option>
+									<option value='price-desc'>Giá: Cao đến thấp</option>
+									<option value='rating'>Đánh giá cao nhất</option>
+								</select>
 
 								<div className='flex items-center gap-1 border border-border rounded-lg p-1'>
 									<Button

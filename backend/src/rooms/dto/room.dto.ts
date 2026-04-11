@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { ApiProperty } from '@nestjs/swagger';
 import { RoomStatus } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsEnum,
@@ -16,6 +17,11 @@ export class CreateRoomDto {
   @IsNotEmpty()
   @IsString()
   title: string;
+
+  @ApiProperty({ example: 'Phòng trọ' })
+  @IsNotEmpty()
+  @IsString()
+  type: string;
 
   @ApiProperty({ example: 'Phòng rộng rãi, thoáng mát...' })
   @IsOptional()
@@ -102,6 +108,11 @@ export class UpdateRoomDto {
   @IsNotEmpty()
   @IsString()
   title: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  type?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -214,6 +225,21 @@ export class SearchRoomDto {
   @Type(() => Number)
   @IsOptional()
   minRating?: number;
+
+  @ApiProperty({ required: false, example: 'Quận 1' })
+  @IsOptional()
+  selectedDistrict?: string;
+
+  @ApiProperty({
+    required: false,
+    example: ['wifi', 'ac'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  selectedAmenities?: string[];
 
   @ApiProperty({ required: false, example: 1 })
   @Type(() => Number)

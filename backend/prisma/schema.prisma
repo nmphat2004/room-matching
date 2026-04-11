@@ -45,6 +45,7 @@ model Room {
   id          String     @id @default(uuid())
   ownerId     String
   title       String
+  type       String
   description String?
   price       Decimal
   electricityCost       Decimal
@@ -88,7 +89,7 @@ model RoomImage {
 model Amenity {
   id   String  @id @default(uuid())
   name String  @unique
-  icon String?
+  value String
 
   rooms RoomAmenity[]
 
