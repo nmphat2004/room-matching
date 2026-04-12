@@ -37,6 +37,7 @@ model User {
   savedRooms    SavedRoom[]
   sentMessages  Message[]
   conversations Conversation[] @relation("RenterConversations")
+  ownedConversations Conversation[] @relation("OwnerConversations")
 
   @@map("users")
 }
@@ -136,6 +137,7 @@ model Conversation {
 
   room     Room      @relation(fields: [roomId], references: [id])
   renter   User      @relation("RenterConversations", fields: [renterId], references: [id])
+  owner    User      @relation("OwnerConversations", fields: [ownerId], references: [id])
   messages Message[]
 
   @@unique([roomId, renterId])

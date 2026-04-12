@@ -34,6 +34,13 @@ export class ChatService {
             avatarUrl: true,
           },
         },
+        owner: {
+          select: {
+            id: true,
+            fullName: true,
+            avatarUrl: true,
+          },
+        },
         messages: {
           orderBy: { sentAt: 'desc' },
           take: 1,

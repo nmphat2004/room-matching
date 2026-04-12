@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import NotificationBell from './notification-bell';
 
 const Header = () => {
 	const { user, logout } = useAuthStore();
@@ -60,6 +61,7 @@ const Header = () => {
 									<MessageCircle className='w-5 h-5' />
 								</Button>
 							</Link>
+							<NotificationBell />
 							<DropdownMenu>
 								<DropdownMenuTrigger>
 									<Avatar className='w-9 h-9 cursor-pointer'>

@@ -48,4 +48,19 @@ export class UserService {
       },
     });
   }
+
+  async update(id: string, data: { fullName?: string; phone?: string }) {
+    return this.prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+      },
+    });
+  }
 }
