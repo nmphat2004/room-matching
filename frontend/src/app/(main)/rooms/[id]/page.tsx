@@ -13,29 +13,11 @@ import { getReviews } from '@/lib/api/review.api';
 import { getRoomById } from '@/lib/api/room.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
-import {
-	Car,
-	Eye,
-	Heart,
-	MapPin,
-	MessageCircle,
-	Phone,
-	Share2,
-	Shield,
-	Wifi,
-	Wind,
-} from 'lucide-react';
+import { Eye, Heart, MapPin, MessageCircle, Phone, Share2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-
-const amenityIcons: Record<string, any> = {
-	wifi: Wifi,
-	'điều hòa': Wind,
-	'giữ xe': Car,
-	'bảo vệ 24/7': Shield,
-};
 
 const RoomDetailPage = () => {
 	const { id } = useParams();
@@ -97,6 +79,8 @@ const RoomDetailPage = () => {
 							<Image
 								src={primaryImage.url}
 								alt={room.title}
+								width={800}
+								height={800}
 								className='w-full h-full object-cover'
 							/>
 						)}
@@ -106,6 +90,8 @@ const RoomDetailPage = () => {
 							<Image
 								src={image.url}
 								alt={`${room.title} ${index + 2}`}
+								width={800}
+								height={800}
 								className='w-full h-full object-cover'
 							/>
 						</div>
@@ -161,7 +147,8 @@ const RoomDetailPage = () => {
 						<div className='mb-6'>
 							<PriceTag amount={room.price} size='lg' />
 							<p className='text-sm text-muted-foreground mt-1'>
-								Điện: {room.electricityCost} • Nước: {room.waterCost}
+								Điện: {Number(room.electricityCost).toLocaleString('vi-VN')}/kWh
+								• Nước: {Number(room.waterCost).toLocaleString('vi-VN')}/tháng
 							</p>
 						</div>
 					</div>
@@ -185,20 +172,17 @@ const RoomDetailPage = () => {
 								<h2 className='mb-4'>Tiện nghi</h2>
 								<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
 									{room.amenities.map(({ amenity }) => (
-										<>
-											<AmenityIcon
-												key={amenity.id}
-												type={amenity.icon}
-												size='md'
-											/>
+										<div key={amenity.id} className='flex gap-2'>
+											<AmenityIcon icon={amenity.icon} size='md' />
 											<span className='text-foreground'>{amenity.name}</span>
-										</>
+										</div>
 									))}
 								</div>
 							</div>
-							<Separator />
 						</>
 					)}
+
+					<Separator />
 
 					{/* House Rules */}
 					<div>
@@ -206,7 +190,7 @@ const RoomDetailPage = () => {
 						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 							<div>
 								<p className='text-sm text-muted-foreground'>Tiền đặt cọc</p>
-								<p>{room.deposit}</p>
+								<p>{Number(room.deposit).toLocaleString('vi-VN')}</p>
 							</div>
 							<div>
 								<p className='text-sm text-muted-foreground'>
@@ -341,7 +325,8 @@ const RoomDetailPage = () => {
 								</div>
 								<div>
 									<p className='text-sm text-muted-foreground'>
-										Thành viên từ {room.owner.createdAt}
+										Thành viên từ{' '}
+										{new Date(room.owner.createdAt).toLocaleDateString('vi-VN')}
 									</p>
 								</div>
 							</div>

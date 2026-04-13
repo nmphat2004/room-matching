@@ -1,3 +1,4 @@
+'use client';
 import { useState } from 'react';
 import { Camera, Lock, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import RoomCard from '@/components/room/room-card';
 
 type Tab = 'personal' | 'security' | 'notifications' | 'saved';
 
-export function ProfileSettingsPage() {
+const ProfilePage = () => {
 	const [activeTab, setActiveTab] = useState<Tab>('personal');
 	const [fullName, setFullName] = useState('Nguyen Van Hung');
 	const [phone, setPhone] = useState('912345678');
@@ -27,29 +28,53 @@ export function ProfileSettingsPage() {
 	const savedRooms = [
 		{
 			id: '1',
-			image:
-				'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400',
-			title: 'Phòng trọ Quận 1 full nội thất',
-			price: 3500000,
-			rating: 4.8,
-			reviewCount: 24,
-			address: 'Quận 1, TP. HCM',
+			title: 'Phòng trọ cao cấp gần ĐH Bách Khoa',
+			address: 'Quận 10, TP. Hồ Chí Minh',
+			price: 4500000,
 			area: 25,
-			status: 'available' as const,
-			amenities: ['wifi' as const, 'ac' as const, 'parking' as const],
+			avgRating: 4.5,
+			reviewCount: 28,
+			images: [
+				{
+					id: '1',
+					url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
+				},
+			],
+			amenities: ['wifi', 'ac', 'parking'] as const,
+			status: 'AVAILABLE',
 		},
 		{
 			id: '2',
-			image:
-				'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=400',
-			title: 'Studio mini gần ĐH Khoa học Tự nhiên',
-			price: 4200000,
-			rating: 4.6,
+			title: 'Studio hiện đại Quận 1',
+			address: 'Quận 1, TP. Hồ Chí Minh',
+			price: 6500000,
+			area: 35,
+			avgRating: 4.8,
+			reviewCount: 42,
+			images: [
+				{
+					id: '2',
+					url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+				},
+			],
+			amenities: ['wifi', 'ac', 'elevator'] as const,
+			featured: true,
+		},
+		{
+			id: '3',
+			title: 'Phòng đẹp giá rẻ gần chợ',
+			address: 'Quận 5, TP. Hồ Chí Minh',
+			price: 3200000,
+			area: 20,
+			avgRating: 4.2,
 			reviewCount: 18,
-			address: 'Quận 3, TP. HCM',
-			area: 30,
-			status: 'available' as const,
-			amenities: ['wifi' as const, 'kitchen' as const],
+			images: [
+				{
+					id: '3',
+					url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
+				},
+			],
+			amenities: ['wifi', 'bathroom'] as const,
 		},
 	];
 
@@ -387,7 +412,7 @@ export function ProfileSettingsPage() {
 														size={18}
 													/>
 												</Button>
-												<RoomCard {...room} />
+												<RoomCard room={room} />
 											</div>
 										))}
 									</div>
@@ -412,4 +437,6 @@ export function ProfileSettingsPage() {
 			</div>
 		</div>
 	);
-}
+};
+
+export default ProfilePage;

@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -21,7 +22,7 @@ import { useRouter } from 'next/navigation';
 import NotificationBell from './notification-bell';
 
 const Header = () => {
-	const { user, logout } = useAuthStore();
+	const { user, logout, isLoading } = useAuthStore();
 	const router = useRouter();
 
 	const handleLogout = () => {
@@ -54,7 +55,13 @@ const Header = () => {
 
 				{/* Auth buttons */}
 				<div className='flex items-center gap-3'>
-					{user ?
+					{isLoading ?
+						<div className='flex items-center gap-3'>
+							<Skeleton className='w-10 h-10 rounded-md' />
+							<Skeleton className='w-10 h-10 rounded-md' />
+							<Skeleton className='w-10 h-10 rounded-full hidden md:block' />
+						</div>
+					: user ?
 						<>
 							<Link href='/chat'>
 								<Button variant='ghost' size='icon'>
@@ -72,10 +79,12 @@ const Header = () => {
 									</Avatar>
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align='end' className='w-48'>
-									<div className='px-3 py-2 border-b'>
-										<p className='font-medium text-sm'>{user.fullName}</p>
-										<p className='text-gray-500 text-xs'>{user.email}</p>
-									</div>
+									<Link href='/profile'>
+										<div className='px-3 py-2 border-b'>
+											<p className='font-medium text-sm'>{user.fullName}</p>
+											<p className='text-gray-500 text-xs'>{user.email}</p>
+										</div>
+									</Link>
 									<DropdownMenuItem onClick={() => router.push('/dashboard')}>
 										<LayoutDashboard className='w-4 h-4 mr-2' />
 										Dashboard

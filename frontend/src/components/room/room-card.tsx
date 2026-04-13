@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AmenityIcon from './amenity-icon';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PriceTag } from './price-tag';
 
 interface Props {
 	room: Room;
@@ -14,8 +15,6 @@ interface Props {
 const RoomCard = ({ room, layout = 'grid' }: Props) => {
 	const primaryImage =
 		room.images?.find((img) => img.isPrimary) || room.images?.[0];
-	const formatPrice = (price: number) =>
-		new Intl.NumberFormat('vi-VN').format(price);
 
 	if (layout === 'list') {
 		return (
@@ -48,12 +47,7 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 							</div>
 
 							<div className='inline-flex items-baseline gap-1'>
-								<span className='text-2xl text-accent'>
-									{formatPrice(room.price)}
-								</span>
-								<span className='text-base text-muted-foreground'>
-									{'đ/tháng'}
-								</span>
+								<PriceTag size='lg' amount={room.price} />
 							</div>
 
 							<div className='flex items-center gap-3 mt-2 text-sm text-muted-foreground'>
@@ -68,8 +62,8 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 									{room.amenities.map((amenity) => (
 										<AmenityIcon
 											key={amenity.amenity.id}
-											type={amenity.amenity.icon}
-											label={amenity.amenity.name}
+											icon={amenity.amenity.icon}
+											name={amenity.amenity.name}
 											size='sm'
 										/>
 									))}
@@ -133,10 +127,7 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 					<h3 className='mb-2 line-clamp-1'>{room.title}</h3>
 
 					<div className='inline-flex items-baseline gap-1'>
-						<span className='text-lg text-accent'>
-							{formatPrice(room.price)}
-						</span>
-						<span className='text-sm text-muted-foreground'>{'đ/tháng'}</span>
+						<PriceTag size='lg' amount={room.price} />
 					</div>
 
 					<div className='flex items-center gap-1.5 text-sm text-muted-foreground mt-2'>

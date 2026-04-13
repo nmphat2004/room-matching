@@ -2,14 +2,14 @@ import * as Icons from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 interface AmenityIconProps {
-	type?: string;
-	label?: string;
+	icon?: string;
+	name?: string;
 	size?: 'sm' | 'md';
 }
 
-const AmenityIcon = ({ type, label, size = 'md' }: AmenityIconProps) => {
+const AmenityIcon = ({ icon, name, size = 'md' }: AmenityIconProps) => {
 	const Icon =
-		(type && (Icons[type as keyof typeof Icons] as LucideIcon)) ||
+		(icon && (Icons[icon as keyof typeof Icons] as LucideIcon)) ||
 		Icons.CircleHelp;
 
 	const iconSizes = {
@@ -25,10 +25,8 @@ const AmenityIcon = ({ type, label, size = 'md' }: AmenityIconProps) => {
 	return (
 		<div className='flex items-center gap-2'>
 			<Icon className={`${iconSizes[size]} text-muted-foreground`} />
-			{label !== undefined && (
-				<span className={`${textSizes[size]} text-foreground`}>
-					{label}
-				</span>
+			{name !== undefined && (
+				<span className={`${textSizes[size]} text-foreground`}>{name}</span>
 			)}
 		</div>
 	);

@@ -261,8 +261,8 @@ const RoomsPage = () => {
 									onChange={(e) => setSortBy(e.target.value)}
 									className='px-4 py-2 rounded-lg border border-border bg-background'>
 									<option value='newest'>Mới nhất</option>
-									<option value='price-asc'>Giá: Thấp đến cao</option>
-									<option value='price-desc'>Giá: Cao đến thấp</option>
+									<option value='price_asc'>Giá: Thấp đến cao</option>
+									<option value='price_desc'>Giá: Cao đến thấp</option>
 									<option value='rating'>Đánh giá cao nhất</option>
 								</select>
 

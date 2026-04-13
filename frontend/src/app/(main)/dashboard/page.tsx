@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 
-export function DashboardPage() {
+const DashboardPage = () => {
 	const [activeTab, setActiveTab] = useState('listings');
 	const [filterStatus, setFilterStatus] = useState('all');
 
@@ -126,7 +126,7 @@ export function DashboardPage() {
 								</button>
 
 								<Link
-									href='/messages'
+									href='/chat'
 									className='w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-foreground hover:bg-secondary transition-colors'>
 									<MessageSquare className='w-5 h-5' />
 									<span>Tin nhắn</span>
@@ -259,6 +259,8 @@ export function DashboardPage() {
 																<Image
 																	src={listing.image}
 																	alt={listing.title}
+																	width={200}
+																	height={200}
 																	className='w-16 h-16 rounded-lg object-cover'
 																/>
 																<div>
@@ -368,4 +370,6 @@ export function DashboardPage() {
 			</div>
 		</div>
 	);
-}
+};
+
+export default DashboardPage;

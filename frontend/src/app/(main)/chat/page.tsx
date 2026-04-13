@@ -1,3 +1,4 @@
+'use client';
 import { useState } from 'react';
 import { Search, Send, Smile, Paperclip, MoreVertical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import Image from 'next/image';
 import { PriceTag } from '@/components/room/price-tag';
 import { Button } from '@/components/ui/button';
 
-export function MessagingPage() {
+const MessagingPage = () => {
 	const [selectedConversation, setSelectedConversation] = useState('1');
 	const [messageInput, setMessageInput] = useState('');
 	const [filterTab, setFilterTab] = useState('all');
@@ -224,11 +225,13 @@ export function MessagingPage() {
 							{/* Pinned Room Card */}
 							<div className='p-4 bg-secondary border-b border-border'>
 								<Link
-									href={`/room/${currentConversation.roomId}`}
+									href={`/rooms/${currentConversation.roomId}`}
 									className='flex items-center gap-4 p-3 bg-card border border-border rounded-lg hover:shadow-md transition-shadow'>
 									<Image
 										src={`https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=200`}
 										alt={currentConversation.roomName}
+										width={200}
+										height={200}
 										className='w-20 h-20 rounded-lg object-cover'
 									/>
 									<div className='flex-1'>
@@ -326,4 +329,6 @@ export function MessagingPage() {
 			</div>
 		</div>
 	);
-}
+};
+
+export default MessagingPage;

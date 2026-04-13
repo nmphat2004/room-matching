@@ -1,8 +1,9 @@
 'use client';
 
-import { PropsWithChildren, useState } from 'react';
+import { PropsWithChildren, useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
+import { useAuthStore } from '@/stores/auth.store';
 
 export default function Providers({ children }: PropsWithChildren) {
 	const [queryClient] = useState(
@@ -16,6 +17,10 @@ export default function Providers({ children }: PropsWithChildren) {
 				},
 			}),
 	);
+
+	useEffect(() => {
+		useAuthStore.getState().fetchUser();
+	}, []);
 
 	return (
 		<QueryClientProvider client={queryClient}>
