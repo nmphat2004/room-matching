@@ -2,6 +2,7 @@
 import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { districts, priceRanges, roomTypesList } from '@/data/data';
 import {
 	Building,
 	Building2,
@@ -14,7 +15,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 const HomePage = () => {
-	const [searchCity, setSearchCity] = useState('');
+	const [searchDistrict, setSearchDistrict] = useState('');
 	const [priceRange, setPriceRange] = useState('');
 	const [roomType, setRoomType] = useState('');
 
@@ -189,14 +190,16 @@ const HomePage = () => {
 					<div className='bg-white rounded-xl shadow-lg p-6'>
 						<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
 							<div>
-								<Label className='block mb-2 text-sm'>Thành phố / Quận</Label>
+								<Label className='block mb-2 text-sm'>Quận</Label>
 								<select
-									value={searchCity}
-									onChange={(e) => setSearchCity(e.target.value)}
+									value={searchDistrict}
+									onChange={(e) => setSearchDistrict(e.target.value)}
 									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									<option>TP. Hồ Chí Minh</option>
-									<option>Hà Nội</option>
-									<option>Đà Nẵng</option>
+									{districts.map((district) => (
+										<option key={district} value={district}>
+											{district}
+										</option>
+									))}
 								</select>
 							</div>
 
@@ -206,11 +209,9 @@ const HomePage = () => {
 									value={priceRange}
 									onChange={(e) => setPriceRange(e.target.value)}
 									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									<option value='all'>Tất cả</option>
-									<option>Dưới 3 triệu</option>
-									<option>3-5 triệu</option>
-									<option>5-7 triệu</option>
-									<option>Trên 7 triệu</option>
+									{priceRanges.map((priceRange) => (
+										<option key={priceRange.label}>{priceRange.label}</option>
+									))}
 								</select>
 							</div>
 
@@ -220,10 +221,11 @@ const HomePage = () => {
 									value={roomType}
 									onChange={(e) => setRoomType(e.target.value)}
 									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									<option value='all'>Tất cả</option>
-									<option>Phòng trọ</option>
-									<option>Nhà nguyên căn</option>
-									<option>Chung cư mini</option>
+									{roomTypesList.map((roomType) => (
+										<option key={roomType.label} value={roomType.value}>
+											{roomType.label}
+										</option>
+									))}
 								</select>
 							</div>
 						</div>
@@ -246,7 +248,7 @@ const HomePage = () => {
 				<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
 					{categories.map((category) => (
 						<Link
-							href='/rooms'
+							href={`/rooms?roomType=${category.title.replace(/\s+/g, '+')}`}
 							key={category.title}
 							className='bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow duration-200 text-center'>
 							<div
@@ -268,7 +270,7 @@ const HomePage = () => {
 					<div className='flex items-center justify-between mb-6'>
 						<h2>Tin đăng mới nhất</h2>
 						<Link
-							href='/rooms'
+							href='/rooms?sortBy=newest'
 							className='flex items-center gap-1 text-primary hover:underline'>
 							Xem tất cả
 							<ChevronRight className='w-4 h-4' />
@@ -288,7 +290,7 @@ const HomePage = () => {
 				<div className='flex items-center justify-between mb-6'>
 					<h2>Phòng đánh giá cao</h2>
 					<Link
-						href='/rooms'
+						href='/rooms?sortBy=rating'
 						className='flex items-center gap-1 text-primary hover:underline'>
 						Xem tất cả
 						<ChevronRight className='w-4 h-4' />

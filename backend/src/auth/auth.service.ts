@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   ConflictException,
   Injectable,
@@ -51,5 +54,20 @@ export class AuthService {
     const { passwordHash, ...safeUser } = user;
     const tokens = this.generateTokens(user.id, user.email, user.role);
     return { user: safeUser, ...tokens };
+  }
+
+  async refreshToken(token: string) {
+    try {
+      const payload = this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+
+      const user = await this.userService.findById(payload.sub);
+      if (!user) throw new UnauthorizedException();
+
+      return this.generateTokens(user.id, user.email, user.role);
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 }

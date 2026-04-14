@@ -47,7 +47,7 @@ const Header = () => {
 						Tìm phòng
 					</Link>
 					<Link
-						href='/roooms?sortBy=rating'
+						href='/rooms?sortBy=rating'
 						className='text-foreground hover:text-primary transition-colors'>
 						Đánh giá cao
 					</Link>

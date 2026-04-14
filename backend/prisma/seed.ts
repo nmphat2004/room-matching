@@ -8,14 +8,17 @@ const prisma = new PrismaClient();
 async function main() {
   // 1. Seed Amenities
   const amenitiesData = [
-    { name: 'WiFi', value: 'wifi', icon: 'Wifi' },
     { name: 'Điều hòa', value: 'ac', icon: 'AirVent' },
     { name: 'Giữ xe', value: 'parking', icon: 'Car' },
     { name: 'Thang máy', value: 'elevator', icon: 'Building2' },
     { name: 'An ninh', value: 'security', icon: 'Shield' },
-    { name: 'WC riêng', value: 'bathroom', icon: 'Droplet' },
-    { name: 'Nhà bếp', value: 'kitchen', icon: 'ChefHat' },
+    { name: 'Kệ bếp', value: 'kitchen', icon: 'ChefHat' },
     { name: 'Máy giặt', value: 'washing', icon: 'WashingMachine' },
+    { name: 'Đầy đủ nội thất', value: 'furnished', icon: 'Sofa' },
+    { name: 'Có gác', value: 'loft', icon: 'ArrowUp' },
+    { name: 'Tủ lạnh', value: 'fridge', icon: 'Refrigerator' },
+    { name: 'Không chung chủ', value: 'no_shared', icon: 'UserX' },
+    { name: 'Giờ giấc tự do', value: 'flexible_hours', icon: 'Clock' },
   ];
 
   console.log('🌱 Seeding amenities...');
@@ -59,9 +62,12 @@ async function main() {
   ];
   const roomTypes = [
     'Phòng trọ',
+    'Nhà riêng',
+    'Ở ghép',
+    'Mặt bằng',
+    'Căn hộ chung cư',
     'Chung cư mini',
     'Căn hộ dịch vụ',
-    'Nhà nguyên căn',
   ];
 
   for (let i = 1; i <= 20; i++) {

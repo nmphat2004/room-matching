@@ -10,7 +10,8 @@ export interface SearchRoomParams {
 	maxArea?: number;
 	minRating?: number;
 	selectedDistrict?: string;
-	selectedAmenities?: string[];
+	amenities?: string;
+	roomType?: string;
 	page?: number;
 	limit?: number;
 	sortBy?: string;

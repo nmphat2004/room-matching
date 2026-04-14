@@ -234,12 +234,22 @@ export class SearchRoomDto {
     required: false,
     example: ['wifi', 'ac'],
     type: [String],
+    description: 'Danh sách mã tiện nghi (vân cách bởi dấu phẩy)',
   })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
-  selectedAmenities?: string[];
+  @Transform(({ value }) => {
+    if (typeof value === 'string') return value.split(',').filter(Boolean);
+    if (Array.isArray(value)) return value;
+    return [];
+  })
+  amenities?: string[];
+
+  @ApiProperty({ required: false, example: 'Phòng trọ' })
+  @IsOptional()
+  @IsString()
+  roomType?: string;
 
   @ApiProperty({ required: false, example: 1 })
   @Type(() => Number)

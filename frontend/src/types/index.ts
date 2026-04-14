@@ -95,6 +95,6 @@ export interface PaginatedResponse<T> {
 		total: number;
 		page: number;
 		limit: number;
-		totalPage: number;
+		totalPages: number;
 	};
 }

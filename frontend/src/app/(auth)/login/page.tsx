@@ -40,7 +40,7 @@ const LoginPage = () => {
 		setIsLoading(true);
 		try {
 			const res = await login(data);
-			setAuth(res.user, res.accessToken);
+			setAuth(res.user, res.accessToken, res.refreshToken);
 			toast.success(`Xin chào, ${res.user.fullName}!`);
 			router.push('/');
 		} catch (error: any) {

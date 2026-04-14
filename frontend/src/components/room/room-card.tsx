@@ -47,7 +47,7 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 							</div>
 
 							<div className='inline-flex items-baseline gap-1'>
-								<PriceTag size='lg' amount={room.price} />
+								<PriceTag size='md' amount={room.price} />
 							</div>
 
 							<div className='flex items-center gap-3 mt-2 text-sm text-muted-foreground'>
@@ -127,7 +127,7 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 					<h3 className='mb-2 line-clamp-1'>{room.title}</h3>
 
 					<div className='inline-flex items-baseline gap-1'>
-						<PriceTag size='lg' amount={room.price} />
+						<PriceTag size='md' amount={room.price} />
 					</div>
 
 					<div className='flex items-center gap-1.5 text-sm text-muted-foreground mt-2'>

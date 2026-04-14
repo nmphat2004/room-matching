@@ -21,3 +21,11 @@ export const login = async (data: { email: string; password: string }) => {
 	const res = await api.post<AuthResponse>('/auth/login', data);
 	return res.data;
 };
+
+export const refreshToken = async (token: string) => {
+	const res = await api.post<{ accessToken: string; refreshToken: string }>(
+		'/auth/refresh',
+		{ refreshToken: token },
+	);
+	return res.data;
+};

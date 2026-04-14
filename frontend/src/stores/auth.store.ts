@@ -12,8 +12,10 @@ interface User {
 interface AuthState {
 	user: User | null;
 	accessToken: string | null;
+	refreshToken: string | null;
 	isLoading: boolean;
-	setAuth: (user: User, accessToken: string) => void;
+	setAuth: (user: User, accessToken: string, refreshToken: string) => void;
+	updateTokens: (accessToken: string, refreshToken: string) => void;
 	logout: () => void;
 	fetchUser: () => Promise<void>;
 }
@@ -21,14 +23,22 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
 	user: null,
 	accessToken: typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null,
+	refreshToken: typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null,
 	isLoading: true,
-	setAuth: (user, accessToken) => {
+	setAuth: (user, accessToken, refreshToken) => {
 		localStorage.setItem('accessToken', accessToken);
-		set({ user, accessToken, isLoading: false });
+		localStorage.setItem('refreshToken', refreshToken);
+		set({ user, accessToken, refreshToken, isLoading: false });
+	},
+	updateTokens: (accessToken, refreshToken) => {
+		localStorage.setItem('accessToken', accessToken);
+		localStorage.setItem('refreshToken', refreshToken);
+		set({ accessToken, refreshToken });
 	},
 	logout: () => {
 		localStorage.removeItem('accessToken');
-		set({ user: null, accessToken: null, isLoading: false });
+		localStorage.removeItem('refreshToken');
+		set({ user: null, accessToken: null, refreshToken: null, isLoading: false });
 	},
 	fetchUser: async () => {
 		const token = get().accessToken || localStorage.getItem('accessToken');
@@ -40,9 +50,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 			const res = await api.get('/users/me');
 			set({ user: res.data, accessToken: token, isLoading: false });
 		} catch {
-			// Token hết hạn hoặc không hợp lệ
-			localStorage.removeItem('accessToken');
-			set({ user: null, accessToken: null, isLoading: false });
+			// Token hết hạn hoặc không hợp lệ -> logout hoặc để axios interceptor xử lý
+			set({ isLoading: false });
 		}
 	},
 }));

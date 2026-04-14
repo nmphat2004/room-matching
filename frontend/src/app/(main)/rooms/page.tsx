@@ -1,60 +1,223 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import FilterChip from '@/components/room/filter-chip';
 import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { districts, priceRanges } from '@/data/data';
 import { getRooms } from '@/lib/api/room.api';
 import { useQuery } from '@tanstack/react-query';
-import { Grid, List, Search } from 'lucide-react';
+import {
+	Building,
+	Building2,
+	ChevronDown,
+	Grid,
+	Home,
+	Hotel,
+	List,
+	Search,
+	Store,
+	Users,
+} from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+// ─── Constants ───────────────────────────────────────────────
+
+const roomTypesList = [
+	{ value: 'Phòng trọ', label: 'Phòng trọ', icon: Home },
+	{ value: 'Nhà riêng', label: 'Nhà riêng', icon: Hotel },
+	{ value: 'Ở ghép', label: 'Ở ghép', icon: Users },
+	{ value: 'Mặt bằng', label: 'Mặt bằng', icon: Store },
+	{ value: 'Căn hộ chung cư', label: 'Căn hộ chung cư', icon: Building2 },
+	{ value: 'Chung cư mini', label: 'Căn hộ mini', icon: Building },
+	{ value: 'Căn hộ dịch vụ', label: 'Căn hộ dịch vụ', icon: Building2 },
+];
+
+const amenitiesList = [
+	{ value: 'furnished', name: 'Đầy đủ nội thất' },
+	{ value: 'loft', name: 'Có gác' },
+	{ value: 'kitchen', name: 'Kệ bếp' },
+	{ value: 'ac', name: 'Có máy lạnh' },
+	{ value: 'washing', name: 'Có máy giặt' },
+	{ value: 'fridge', name: 'Có tủ lạnh' },
+	{ value: 'elevator', name: 'Có thang máy' },
+	{ value: 'no_shared', name: 'Không chung chủ' },
+	{ value: 'flexible_hours', name: 'Giờ giấc tự do' },
+	{ value: 'security', name: 'Có bảo vệ 24/24' },
+	{ value: 'parking', name: 'Có hầm để xe' },
+];
+
+const areaRanges = [
+	{ label: 'Dưới 20m²', min: 0, max: 20 },
+	{ label: '20-30m²', min: 20, max: 30 },
+	{ label: '30-50m²', min: 30, max: 50 },
+	{ label: 'Trên 50m²', min: 50, max: 1000 },
+];
+
+type OpenFilter =
+	| 'roomType'
+	| 'price'
+	| 'area'
+	| 'district'
+	| 'amenities'
+	| null;
+
+// ─── Component ───────────────────────────────────────────────
 
 const RoomsPage = () => {
 	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+	const filterRef = useRef<HTMLDivElement>(null);
 
+	// ─── State ───────────────────────────────────────────────
 	const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
 	const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
 	const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
-	const [minArea, setMinArea] = useState(searchParams.get('minArea') || 0);
-	const [maxArea, setMaxArea] = useState(searchParams.get('maxArea') || 100);
+	const [minArea, setMinArea] = useState(
+		Number(searchParams.get('minArea')) || 0,
+	);
+	const [maxArea, setMaxArea] = useState(
+		Number(searchParams.get('maxArea')) || 100,
+	);
 	const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest');
-	const [selectedDistrict, setSelectedDistrict] = useState('all');
-	const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+	const [selectedDistrict, setSelectedDistrict] = useState(
+		searchParams.get('district') || 'all',
+	);
+	const [selectedAmenities, setSelectedAmenities] = useState<string[]>(
+		searchParams.get('amenities')?.split(',').filter(Boolean) || [],
+	);
+	const [selectedRoomType, setSelectedRoomType] = useState(
+		searchParams.get('roomType') || '',
+	);
 	const [minRating, setMinRating] = useState(searchParams.get('rating') || '');
 	const [layout, setLayout] = useState<'grid' | 'list'>('list');
 	const [page, setPage] = useState(1);
+	const [openFilter, setOpenFilter] = useState<OpenFilter>(null);
 
-	const districts = [
-		'Quận 1',
-		'Quận 3',
-		'Quận 5',
-		'Quận 7',
-		'Quận 10',
-		'Bình Thạnh',
-		'Phú Nhuận',
-		'Tân Bình',
-	];
+	// ─── Click outside to close dropdown ─────────────────────
+	useEffect(() => {
+		const handleClickOutside = (e: MouseEvent) => {
+			if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+				setOpenFilter(null);
+			}
+		};
+		document.addEventListener('mousedown', handleClickOutside);
+		return () => document.removeEventListener('mousedown', handleClickOutside);
+	}, []);
 
-	const areaRanges = [
-		{ label: 'Dưới 20m²', min: 0, max: 20 },
-		{ label: '20-30m²', min: 20, max: 30 },
-		{ label: '30-50m²', min: 30, max: 50 },
-		{ label: 'Trên 50m²', min: 50, max: 1000 },
-	];
+	const toggleFilter = (filter: OpenFilter) => {
+		setOpenFilter((prev) => (prev === filter ? null : filter));
+	};
 
-	const amenitiesList = [
-		{ value: 'wifi', name: 'WiFi' },
-		{ value: 'ac', name: 'Điều hòa' },
-		{ value: 'parking', name: 'Giữ xe' },
-		{ value: 'elevator', name: 'Thang máy' },
-		{ value: 'bathroom', name: 'WC riêng' },
-		{ value: 'kitchen', name: 'Bếp' },
-		{ value: 'security', name: 'An ninh' },
-		{ value: 'washing', name: 'Máy giặt' },
-	];
+	// ─── Helpers ─────────────────────────────────────────────
+	const getActivePriceLabel = () => {
+		const r = priceRanges.find((r) => r.min === minPrice && r.max === maxPrice);
+		return r && r.label !== 'Tất cả' ? r.label : '';
+	};
 
+	const getActiveAreaLabel = () => {
+		const r = areaRanges.find((r) => r.min === minArea && r.max === maxArea);
+		return r ? r.label : '';
+	};
+
+	const hasActiveFilters =
+		!!selectedRoomType ||
+		!!(minPrice || maxPrice) ||
+		minArea !== 0 ||
+		maxArea !== 100 ||
+		selectedDistrict !== 'all' ||
+		selectedAmenities.length > 0;
+
+	// ─── URL sync ────────────────────────────────────────────
+	const updateUrl = useCallback(
+		(updates: Record<string, string>) => {
+			const params = new URLSearchParams(searchParams.toString());
+			Object.entries(updates).forEach(([key, value]) => {
+				if (value) {
+					params.set(key, value);
+				} else {
+					params.delete(key);
+				}
+			});
+			const qs = params.toString();
+			router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+		},
+		[searchParams, router, pathname],
+	);
+
+	// ─── Handlers ────────────────────────────────────────────
+	const handlePriceRangeSelect = (range: (typeof priceRanges)[number]) => {
+		setMinPrice(range.min);
+		setMaxPrice(range.max);
+		setPage(1);
+		updateUrl({ minPrice: range.min, maxPrice: range.max });
+	};
+
+	const handleRoomTypeSelect = (type: string) => {
+		const next = selectedRoomType === type ? '' : type;
+		setSelectedRoomType(next);
+		setPage(1);
+		updateUrl({ roomType: next });
+	};
+
+	const handleAreaSelect = (range: { min: number; max: number }) => {
+		if (minArea === range.min && maxArea === range.max) {
+			setMinArea(0);
+			setMaxArea(100);
+			updateUrl({ minArea: '', maxArea: '' });
+		} else {
+			setMinArea(range.min);
+			setMaxArea(range.max);
+			updateUrl({
+				minArea: String(range.min),
+				maxArea: String(range.max),
+			});
+		}
+		setPage(1);
+	};
+
+	const handleDistrictSelect = (district: string) => {
+		const next = selectedDistrict === district ? 'all' : district;
+		setSelectedDistrict(next);
+		setPage(1);
+		updateUrl({ district: next === 'all' ? '' : next });
+	};
+
+	const handleSortBy = (e: any) => {
+		const newValue = e.target.value;
+		setSortBy(newValue);
+		updateUrl({ sortBy: newValue });
+	};
+
+	const toggleAmenity = (amenity: string) => {
+		const next =
+			selectedAmenities.includes(amenity) ?
+				selectedAmenities.filter((a) => a !== amenity)
+			:	[...selectedAmenities, amenity];
+
+		setSelectedAmenities(next);
+		updateUrl({ amenities: next.length > 0 ? next.join(',') : '' });
+	};
+
+	const handleReset = () => {
+		setKeyword('');
+		setMinPrice('');
+		setMaxPrice('');
+		setMinArea(0);
+		setMaxArea(100);
+		setSelectedDistrict('all');
+		setSelectedAmenities([]);
+		setSelectedRoomType('');
+		setMinRating('');
+		setPage(1);
+		setOpenFilter(null);
+		router.push(pathname, { scroll: false });
+	};
+
+	// ─── Data fetching ───────────────────────────────────────
 	const { data, isLoading } = useQuery({
 		queryKey: [
 			'rooms',
@@ -64,6 +227,7 @@ const RoomsPage = () => {
 			sortBy,
 			selectedDistrict,
 			selectedAmenities,
+			selectedRoomType,
 			minRating,
 			minArea,
 			maxArea,
@@ -75,8 +239,13 @@ const RoomsPage = () => {
 				minPrice: minPrice ? Number(minPrice) : undefined,
 				maxPrice: maxPrice ? Number(maxPrice) : undefined,
 				minRating: minRating ? Number(minRating) : undefined,
-				selectedDistrict: selectedDistrict || undefined,
-				selectedAmenities,
+				selectedDistrict:
+					selectedDistrict !== 'all' ? selectedDistrict : undefined,
+				amenities:
+					selectedAmenities.length > 0 ?
+						selectedAmenities.join(',')
+					:	undefined,
+				roomType: selectedRoomType || undefined,
 				minArea: minArea ? Number(minArea) : undefined,
 				maxArea: maxArea ? Number(maxArea) : undefined,
 				sortBy,
@@ -85,258 +254,383 @@ const RoomsPage = () => {
 			}),
 	});
 
-	const toggleAmenity = (amenity: string) => {
-		setSelectedAmenities((prev) =>
-			prev.includes(amenity) ?
-				prev.filter((a) => a !== amenity)
-			:	[...prev, amenity],
-		);
-	};
+	// ─── Chip style helper ───────────────────────────────────
+	const chipClass = (active: boolean) =>
+		`px-3 py-1.5 text-sm rounded-full border transition-all duration-200 cursor-pointer ${
+			active ?
+				'bg-primary text-primary-foreground border-primary'
+			:	'bg-background text-foreground border-border hover:bg-secondary'
+		}`;
 
-	const handleReset = () => {
-		setKeyword('');
-		setMinPrice('');
-		setMaxPrice('');
-		setMinArea(0);
-		setMaxArea(100);
-		setSelectedDistrict('all');
-		setSelectedAmenities([]);
-		setMinRating('');
-		setPage(1); // Nên reset cả trang về 1
-	};
+	const filterBtnClass = (hasValue: boolean, isOpen: boolean) =>
+		`inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm font-medium transition-all cursor-pointer ${
+			hasValue ?
+				'border-primary bg-primary/5 text-primary'
+			:	'border-border hover:bg-secondary'
+		} ${isOpen ? 'ring-2 ring-primary/20' : ''}`;
 
+	// ─── Render ──────────────────────────────────────────────
 	return (
 		<div className='bg-background min-h-screen'>
 			<div className='max-w-7xl mx-auto px-4 py-6'>
-				<div className='flex gap-6'>
-					{/* Left Sidebar - Filters */}
-					<div className='w-72 shrink-0'>
-						<div className='sticky top-24 bg-card border border-border rounded-xl p-6'>
-							<div className='flex items-center justify-between mb-6'>
-								<h3>Bộ lọc</h3>
+				{/* ── Filter Bar ────────────────────────────── */}
+				<div
+					ref={filterRef}
+					className='bg-card border border-border rounded-xl mb-6'>
+					{/* Filter buttons row */}
+					<div className='flex items-center gap-2 p-4 flex-wrap'>
+						{/* Room Type */}
+						<button
+							onClick={() => toggleFilter('roomType')}
+							className={filterBtnClass(
+								!!selectedRoomType,
+								openFilter === 'roomType',
+							)}>
+							{selectedRoomType || 'Danh mục'}
+							<ChevronDown
+								className={`w-4 h-4 transition-transform duration-200 ${openFilter === 'roomType' ? 'rotate-180' : ''}`}
+							/>
+						</button>
+
+						{/* Price */}
+						<button
+							onClick={() => toggleFilter('price')}
+							className={filterBtnClass(
+								!!(minPrice || maxPrice),
+								openFilter === 'price',
+							)}>
+							{getActivePriceLabel() || 'Khoảng giá'}
+							<ChevronDown
+								className={`w-4 h-4 transition-transform duration-200 ${openFilter === 'price' ? 'rotate-180' : ''}`}
+							/>
+						</button>
+
+						{/* Area */}
+						<button
+							onClick={() => toggleFilter('area')}
+							className={filterBtnClass(
+								minArea !== 0 || maxArea !== 100,
+								openFilter === 'area',
+							)}>
+							{getActiveAreaLabel() || 'Diện tích'}
+							<ChevronDown
+								className={`w-4 h-4 transition-transform duration-200 ${openFilter === 'area' ? 'rotate-180' : ''}`}
+							/>
+						</button>
+
+						{/* District */}
+						<button
+							onClick={() => toggleFilter('district')}
+							className={filterBtnClass(
+								selectedDistrict !== 'all',
+								openFilter === 'district',
+							)}>
+							{selectedDistrict !== 'all' ? selectedDistrict : 'Quận/Huyện'}
+							<ChevronDown
+								className={`w-4 h-4 transition-transform duration-200 ${openFilter === 'district' ? 'rotate-180' : ''}`}
+							/>
+						</button>
+
+						{/* Amenities */}
+						<button
+							onClick={() => toggleFilter('amenities')}
+							className={filterBtnClass(
+								selectedAmenities.length > 0,
+								openFilter === 'amenities',
+							)}>
+							Đặc điểm nổi bật
+							{selectedAmenities.length > 0 && (
+								<span className='bg-primary text-white text-xs w-5 h-5 rounded-full flex items-center justify-center'>
+									{selectedAmenities.length}
+								</span>
+							)}
+							<ChevronDown
+								className={`w-4 h-4 transition-transform duration-200 ${openFilter === 'amenities' ? 'rotate-180' : ''}`}
+							/>
+						</button>
+
+						{/* Reset */}
+						{hasActiveFilters && (
+							<button
+								onClick={handleReset}
+								className='text-sm text-muted-foreground hover:text-destructive transition-colors cursor-pointer ml-1'>
+								Đặt lại bộ lọc
+							</button>
+						)}
+
+						{/* ── Right side: Sort + Layout ── */}
+						<div className='ml-auto flex items-center gap-3'>
+							<select
+								value={sortBy}
+								onChange={handleSortBy}
+								className='px-4 py-2 rounded-lg border border-border bg-background text-sm'>
+								<option value='newest'>Mới nhất</option>
+								<option value='price_asc'>Giá: Thấp → Cao</option>
+								<option value='price_desc'>Giá: Cao → Thấp</option>
+								<option value='rating'>Đánh giá cao nhất</option>
+							</select>
+
+							<div className='flex items-center gap-1 border border-border rounded-lg p-1'>
 								<Button
-									onClick={handleReset}
-									variant='default'
-									className='text-sm text-white hover:underline'>
-									Đặt lại
+									variant='ghost'
+									size='sm'
+									onClick={() => setLayout('list')}
+									className={`p-2 rounded ${layout === 'list' ? 'bg-primary text-white' : 'text-muted-foreground'}`}>
+									<List className='w-4 h-4' />
+								</Button>
+								<Button
+									variant='ghost'
+									size='sm'
+									onClick={() => setLayout('grid')}
+									className={`p-2 rounded ${layout === 'grid' ? 'bg-primary text-white' : 'text-muted-foreground'}`}>
+									<Grid className='w-4 h-4' />
 								</Button>
 							</div>
+						</div>
+					</div>
 
-							{/* Price Range */}
-							<div className='mb-6'>
-								<Label className='block mb-3'>Khoảng giá (đ/tháng)</Label>
-								<div className='space-y-3'>
-									<Input
-										type='number'
-										placeholder='Từ'
-										value={minPrice}
-										onChange={(e) => setMinPrice(e.target.value)}
-										className='border-border'
-									/>
-									<Input
-										type='number'
-										placeholder='Đến'
-										value={maxPrice}
-										onChange={(e) => setMaxPrice(e.target.value)}
-										className='border-border'
-									/>
+					{/* ── Dropdown Panels ─────────────────────── */}
+					{openFilter && (
+						<div className='border-t border-border p-5'>
+							{/* Room Type */}
+							{openFilter === 'roomType' && (
+								<div>
+									<Label className='block mb-3 text-sm font-medium'>
+										Danh mục cho thuê
+									</Label>
+									<div className='grid grid-cols-4 md:grid-cols-7 gap-2'>
+										{roomTypesList.map((type) => {
+											const Icon = type.icon;
+											const isActive = selectedRoomType === type.value;
+											return (
+												<button
+													key={type.value}
+													onClick={() => handleRoomTypeSelect(type.value)}
+													className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border text-xs transition-all duration-200 cursor-pointer ${
+														isActive ?
+															'bg-primary text-primary-foreground border-primary'
+														:	'bg-background text-foreground border-border hover:bg-secondary'
+													}`}>
+													<Icon className='w-6 h-6' />
+													<span className='leading-tight text-center'>
+														{type.label}
+													</span>
+												</button>
+											);
+										})}
+									</div>
 								</div>
-							</div>
+							)}
+
+							{/* Price */}
+							{openFilter === 'price' && (
+								<div>
+									<Label className='block mb-3 text-sm font-medium'>
+										Khoảng giá
+									</Label>
+									<div className='flex flex-wrap gap-2'>
+										{priceRanges.map((range) => (
+											<button
+												key={range.label}
+												onClick={() => handlePriceRangeSelect(range)}
+												className={chipClass(
+													range.min === minPrice && range.max === maxPrice,
+												)}>
+												{range.label}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
 
 							{/* Area */}
-							<div className='mb-6'>
-								<Label className='block mb-3'>Diện tích</Label>
-								<div className='space-y-2'>
-									{areaRanges.map((range) => (
-										<Label
-											key={range.label}
-											className='flex items-center gap-2 cursor-pointer'>
-											<input
-												type='checkbox'
-												className='w-4 h-4 rounded border-border'
-												checked={minArea === range.min && maxArea === range.max}
-												onChange={() => {
-													if (minArea === range.min && maxArea === range.max) {
-														// Nếu đang chọn rồi mà click lại thì bỏ lọc
-														setMinArea(0);
-														setMaxArea(100);
-													} else {
-														setMinArea(range.min);
-														setMaxArea(range.max);
-													}
-												}}
-											/>
-											<span className='text-sm'>{range.label}</span>
-										</Label>
-									))}
+							{openFilter === 'area' && (
+								<div>
+									<Label className='block mb-3 text-sm font-medium'>
+										Diện tích
+									</Label>
+									<div className='flex flex-wrap gap-2'>
+										{areaRanges.map((range) => (
+											<button
+												key={range.label}
+												onClick={() => handleAreaSelect(range)}
+												className={chipClass(
+													minArea === range.min && maxArea === range.max,
+												)}>
+												{range.label}
+											</button>
+										))}
+									</div>
 								</div>
-							</div>
+							)}
 
 							{/* District */}
-							<div className='mb-6'>
-								<label className='block mb-3'>Quận/Huyện</label>
-								<select
-									value={selectedDistrict}
-									onChange={(e) => setSelectedDistrict(e.target.value)}
-									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									<option value='all'>Tất cả</option>
-									{districts.map((district) => (
-										<option key={district} value={district}>
-											{district}
-										</option>
-									))}
-								</select>
-							</div>
+							{openFilter === 'district' && (
+								<div>
+									<Label className='block mb-3 text-sm font-medium'>
+										Quận/Huyện
+									</Label>
+									<div className='flex flex-wrap gap-2'>
+										<button
+											onClick={() => handleDistrictSelect('all')}
+											className={chipClass(selectedDistrict === 'all')}>
+											Tất cả
+										</button>
+										{districts.map((district) => (
+											<button
+												key={district}
+												onClick={() => handleDistrictSelect(district)}
+												className={chipClass(selectedDistrict === district)}>
+												{district}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
 
 							{/* Amenities */}
-							<div className='mb-6'>
-								<Label className='block mb-3'>Tiện nghi</Label>
-								<div className='grid grid-cols-2 gap-2'>
-									{amenitiesList.map((amenity) => (
-										<Label
-											key={amenity.value}
-											className='flex items-center gap-2 cursor-pointer'>
-											<Input
-												type='checkbox'
-												className='w-4 h-4 rounded border-border'
-												checked={selectedAmenities.includes(amenity.value)}
-												onChange={() => toggleAmenity(amenity.value)}
-											/>
-											<span className='text-sm'>{amenity.name}</span>
-										</Label>
-									))}
-								</div>
-							</div>
-
-							{/* Minimum Rating */}
-							<div className='mb-6'>
-								<Label className='block mb-3'>Đánh giá tối thiểu</Label>
-								<div className='space-y-2'>
-									{[5, 4, 3, 2, 1].map((rating) => (
-										<Label
-											key={rating}
-											className='flex items-center gap-2 cursor-pointer'>
-											<Input
-												value={minRating}
-												onChange={(e) => setMinRating(e.target.value)}
-												type='radio'
-												name='rating'
-												className='w-4 h-4'
-											/>
-											<span className='text-sm'>{rating}+ sao</span>
-										</Label>
-									))}
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div className='flex-1'>
-						{/* Top bar */}
-						<div className='flex items-center justify-between mb-6'>
-							<div>
-								<h2 className='mb-1'>
-									{!isLoading &&
-										selectedDistrict !== 'all' &&
-										`${data?.data.length} phòng tìm thấy tại ${selectedDistrict}`}
-								</h2>
-								<div className='flex items-center gap-2 flex-wrap'>
-									{selectedAmenities.map((amenity) => (
-										<FilterChip
-											key={amenity}
-											label={
-												amenitiesList.find((a) => a.value === amenity)?.name ||
-												amenity
-											}
-											active
-											onRemove={() => toggleAmenity(amenity)}
-										/>
-									))}
-								</div>
-							</div>
-
-							<div className='flex items-center gap-3'>
-								<select
-									value={sortBy}
-									onChange={(e) => setSortBy(e.target.value)}
-									className='px-4 py-2 rounded-lg border border-border bg-background'>
-									<option value='newest'>Mới nhất</option>
-									<option value='price_asc'>Giá: Thấp đến cao</option>
-									<option value='price_desc'>Giá: Cao đến thấp</option>
-									<option value='rating'>Đánh giá cao nhất</option>
-								</select>
-
-								<div className='flex items-center gap-1 border border-border rounded-lg p-1'>
-									<Button
-										variant='ghost'
-										onClick={() => setLayout('list')}
-										className={`p-2 rounded ${layout === 'list' ? 'bg-primary text-white' : 'text-muted-foreground'}`}>
-										<List className='w-4 h-4' />
-									</Button>
-									<Button
-										variant='ghost'
-										onClick={() => setLayout('grid')}
-										className={`p-2 rounded ${layout === 'grid' ? 'bg-primary text-white' : 'text-muted-foreground'}`}>
-										<Grid className='w-4 h-4' />
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						{/* Room list */}
-						{isLoading ?
-							<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5'>
-								{Array.from({ length: 8 }).map((_, i) => (
-									<div key={i} className='rounded-xl border overflow-hidden'>
-										<Skeleton className='h-48 w-full' />
-										<div className='p-4 space-y-2'>
-											<Skeleton className='h-4 w-3/4' />
-											<Skeleton className='h-3 w-full' />
-											<Skeleton className='h-5 w-1/2' />
-										</div>
+							{openFilter === 'amenities' && (
+								<div>
+									<Label className='block mb-3 text-sm font-medium'>
+										Đặc điểm nổi bật
+									</Label>
+									<div className='flex flex-wrap gap-2'>
+										{amenitiesList.map((amenity) => (
+											<button
+												key={amenity.value}
+												onClick={() => toggleAmenity(amenity.value)}
+												className={chipClass(
+													selectedAmenities.includes(amenity.value),
+												)}>
+												{amenity.name}
+											</button>
+										))}
 									</div>
-								))}
-							</div>
-						: data?.data.length === 0 ?
-							<div className='text-center py-20 text-gray-400'>
-								<Search className='w-12 h-12 mx-auto mb-3 opacity-30' />
-								<p className='text-lg'>Không tìm thấy phòng phù hợp</p>
-								<p className='text-sm mt-1'>Thử thay đổi bộ lọc tìm kiếm</p>
-							</div>
-						:	<div
-								className={
-									layout === 'grid' ?
-										'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
-									:	'space-y-4'
-								}>
-								{data?.data.map((room) => (
-									<RoomCard room={room} key={room.id} layout={layout} />
-								))}
-							</div>
-						}
+								</div>
+							)}
+						</div>
+					)}
 
-						{/* Pagination */}
-						{data && data?.meta.totalPage > 1 && (
-							<div className='flex justify-center gap-2 mt-8'>
-								<Button
-									variant='outline'
-									disabled={page === 1}
-									onClick={() => setPage((prev) => prev - 1)}>
-									Trước
-								</Button>
-								<span className='flex items-center px-4 text-sm text-gray-600'>
-									Trang {page} / {data?.meta.totalPage}
-								</span>
-								<Button
-									variant='outline'
-									disabled={page === data?.meta.totalPage}
-									onClick={() => setPage((prev) => prev + 1)}>
-									Tiếp
-								</Button>
-							</div>
-						)}
-					</div>
+					{/* ── Active Filter Chips ────────────────── */}
+					{hasActiveFilters && (
+						<div className='border-t border-border px-4 py-3 flex items-center gap-2 flex-wrap'>
+							<span className='text-sm text-muted-foreground mr-1'>
+								Đang lọc:
+							</span>
+							{selectedRoomType && (
+								<FilterChip
+									label={selectedRoomType}
+									active
+									onRemove={() => handleRoomTypeSelect(selectedRoomType)}
+								/>
+							)}
+							{getActivePriceLabel() && (
+								<FilterChip
+									label={getActivePriceLabel()}
+									active
+									onRemove={() => handlePriceRangeSelect(priceRanges[0])}
+								/>
+							)}
+							{getActiveAreaLabel() && (
+								<FilterChip
+									label={getActiveAreaLabel()}
+									active
+									onRemove={() => {
+										setMinArea(0);
+										setMaxArea(100);
+										setPage(1);
+										updateUrl({
+											minArea: '',
+											maxArea: '',
+										});
+									}}
+								/>
+							)}
+							{selectedDistrict !== 'all' && (
+								<FilterChip
+									label={selectedDistrict}
+									active
+									onRemove={() => handleDistrictSelect('all')}
+								/>
+							)}
+							{selectedAmenities.map((amenity) => (
+								<FilterChip
+									key={amenity}
+									label={
+										amenitiesList.find((a) => a.value === amenity)?.name ||
+										amenity
+									}
+									active
+									onRemove={() => toggleAmenity(amenity)}
+								/>
+							))}
+						</div>
+					)}
 				</div>
+
+				{/* ── Result count ────────────────────────────── */}
+				{!isLoading && data && (
+					<p className='text-sm text-muted-foreground mb-4'>
+						Tìm thấy{' '}
+						<span className='font-semibold text-foreground'>
+							{data.meta.total}
+						</span>{' '}
+						phòng
+					</p>
+				)}
+
+				{/* ── Room list ───────────────────────────────── */}
+				{isLoading ?
+					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5'>
+						{Array.from({ length: 8 }).map((_, i) => (
+							<div key={i} className='rounded-xl border overflow-hidden'>
+								<Skeleton className='h-48 w-full' />
+								<div className='p-4 space-y-2'>
+									<Skeleton className='h-4 w-3/4' />
+									<Skeleton className='h-3 w-full' />
+									<Skeleton className='h-5 w-1/2' />
+								</div>
+							</div>
+						))}
+					</div>
+				: data?.data.length === 0 ?
+					<div className='text-center py-20 text-gray-400'>
+						<Search className='w-12 h-12 mx-auto mb-3 opacity-30' />
+						<p className='text-lg'>Không tìm thấy phòng phù hợp</p>
+						<p className='text-sm mt-1'>Thử thay đổi bộ lọc tìm kiếm</p>
+					</div>
+				:	<div
+						className={
+							layout === 'grid' ?
+								'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+							:	'space-y-4'
+						}>
+						{data?.data.map((room) => (
+							<RoomCard room={room} key={room.id} layout={layout} />
+						))}
+					</div>
+				}
+
+				{/* ── Pagination ──────────────────────────────── */}
+				{data && data?.meta.totalPages > 1 && (
+					<div className='flex justify-center gap-2 mt-8'>
+						<Button
+							variant='outline'
+							disabled={page === 1}
+							onClick={() => setPage((prev) => prev - 1)}>
+							Trước
+						</Button>
+						<span className='flex items-center px-4 text-sm text-gray-600'>
+							Trang {page} / {data?.meta.totalPages}
+						</span>
+						<Button
+							variant='outline'
+							disabled={page === data?.meta.totalPages}
+							onClick={() => setPage((prev) => prev + 1)}>
+							Tiếp
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -152,7 +152,8 @@ export class RoomsService {
       maxArea,
       minRating,
       selectedDistrict,
-      selectedAmenities,
+      amenities,
+      roomType,
       page = 1,
       limit = 10,
       sortBy = 'newest',
@@ -160,6 +161,9 @@ export class RoomsService {
 
     const where: any = {
       status: 'AVAILABLE',
+      ...(roomType && {
+        type: { equals: roomType, mode: 'insensitive' },
+      }),
       ...(selectedDistrict &&
         selectedDistrict !== 'all' && {
           address: { contains: selectedDistrict, mode: 'insensitive' },
@@ -189,13 +193,13 @@ export class RoomsService {
           }
         : {}),
       ...(minRating && { avgRating: { gte: minRating } }),
-      ...(selectedAmenities &&
-        selectedAmenities.length > 0 && {
-          AND: selectedAmenities.map((value) => ({
+      ...(amenities &&
+        amenities.length > 0 && {
+          AND: amenities.map((value) => ({
             amenities: {
               some: {
                 amenity: {
-                  value: { contains: value, mode: 'insensitive' },
+                  value: { equals: value, mode: 'insensitive' },
                 },
               },
             },

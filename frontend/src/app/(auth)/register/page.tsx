@@ -47,7 +47,7 @@ const RegisterPage = () => {
 		setIsLoading(true);
 		try {
 			const res = await registerApi(data);
-			setAuth(res.user, res.accessToken);
+			setAuth(res.user, res.accessToken, res.refreshToken);
 			toast.success('Đăng kí thành công!');
 			router.push('/');
 		} catch (error: any) {
