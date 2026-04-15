@@ -7,6 +7,8 @@ import { UploadModule } from './upload/upload.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { ChatModule } from './chat/chat.module';
+import { RecommendationModule } from './recommendation/recommendation.module';
+import { FraudModule } from './fraud/fraud.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { ChatModule } from './chat/chat.module';
     RoomsModule,
     ReviewsModule,
     ChatModule,
+    RecommendationModule,
+    FraudModule,
   ],
 })
 export class AppModule {}

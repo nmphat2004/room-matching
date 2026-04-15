@@ -10,10 +10,14 @@ import {
 } from '@nestjs/common';
 import { CreateReviewDto } from './dto/review.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { FakeReviewService } from 'src/fraud/fake-review.service';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fakeReviewService: FakeReviewService,
+  ) {}
 
   async findByRoom(roomId: string, page: number = 1, limit: number = 10) {
     const room = await this.prisma.room.findUnique({ where: { id: roomId } });
@@ -74,6 +78,19 @@ export class ReviewsService {
     if (existing)
       throw new BadRequestException('You have already reviewed this room');
 
+    const fraudResult = await this.fakeReviewService.analyze(
+      reviewerId,
+      roomId,
+      dto.rating,
+      dto.comment || '',
+    );
+
+    if (fraudResult.action === 'reject') {
+      throw new BadRequestException(
+        'Đánh giá bị từ chối vì có dấu hiệu không hợp lệ',
+      );
+    }
+
     const review = await this.prisma.review.create({
       data: {
         roomId,
@@ -84,6 +101,7 @@ export class ReviewsService {
         landlordRating: dto.landlordRating,
         locationRating: dto.locationRating,
         comment: dto.comment,
+        isVerified: fraudResult.action === 'approve',
       },
       include: {
         reviewer: { select: { id: true, fullName: true, avatarUrl: true } },
@@ -95,7 +113,11 @@ export class ReviewsService {
     if (dto.comment)
       this.analyzeSentiment(review.id, dto.comment).catch(console.error);
 
-    return review;
+    return {
+      ...review,
+      fraudScore: fraudResult.score,
+      isFlagged: fraudResult.action === 'flag',
+    };
   }
 
   async remove(id: string, userId: string, role: string) {

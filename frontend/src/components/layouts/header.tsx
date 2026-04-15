@@ -80,7 +80,7 @@ const Header = () => {
 								</DropdownMenuTrigger>
 								<DropdownMenuContent align='end' className='w-48'>
 									<Link href='/profile'>
-										<div className='px-3 py-2 border-b'>
+										<div className='px-3 py-2 border-b hover:bg-secondary'>
 											<p className='font-medium text-sm'>{user.fullName}</p>
 											<p className='text-gray-500 text-xs'>{user.email}</p>
 										</div>
@@ -89,7 +89,9 @@ const Header = () => {
 										<LayoutDashboard className='w-4 h-4 mr-2' />
 										Dashboard
 									</DropdownMenuItem>
-									<DropdownMenuItem onClick={handleLogout}>
+									<DropdownMenuItem
+										onClick={handleLogout}
+										className='text-red-500'>
 										<LogOut className='w-4 h-4 mr-2' />
 										Đăng xuất
 									</DropdownMenuItem>

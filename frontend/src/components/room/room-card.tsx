@@ -87,7 +87,7 @@ const RoomCard = ({ room, layout = 'grid' }: Props) => {
 									<Badge
 										variant='outline'
 										className={cn(
-											'rounded-full font-medium',
+											'rounded-full font-medium h-8',
 											room.status === 'AVAILABLE' ?
 												'bg-emerald-50 text-emerald-600 border-emerald-200'
 											:	'bg-rose-50 text-rose-600 border-rose-200',

@@ -2,7 +2,10 @@
 import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { districts, priceRanges, roomTypesList } from '@/data/data';
+import { getRooms } from '@/lib/api/room.api';
+import { useQuery } from '@tanstack/react-query';
 import {
 	Building,
 	Building2,
@@ -46,126 +49,29 @@ const HomePage = () => {
 		},
 	];
 
-	const latestRooms = [
-		{
-			id: '1',
-			title: 'Phòng trọ cao cấp gần ĐH Bách Khoa',
-			address: 'Quận 10, TP. Hồ Chí Minh',
-			price: 4500000,
-			area: 25,
-			avgRating: 4.5,
-			reviewCount: 28,
-			images: [
-				{
-					id: '1',
-					url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'parking'] as const,
-			status: 'AVAILABLE',
-		},
-		{
-			id: '2',
-			title: 'Studio hiện đại Quận 1',
-			address: 'Quận 1, TP. Hồ Chí Minh',
-			price: 6500000,
-			area: 35,
-			avgRating: 4.8,
-			reviewCount: 42,
-			images: [
-				{
-					id: '2',
-					url: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'elevator'] as const,
-			featured: true,
-		},
-		{
-			id: '3',
-			title: 'Phòng đẹp giá rẻ gần chợ',
-			address: 'Quận 5, TP. Hồ Chí Minh',
-			price: 3200000,
-			area: 20,
-			avgRating: 4.2,
-			reviewCount: 18,
-			images: [
-				{
-					id: '3',
-					url: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
-				},
-			],
-			amenities: ['wifi', 'bathroom'] as const,
-		},
-	];
+	// Fetch newest rooms
+	const { data: latestRooms, isLoading: newestLoading } = useQuery({
+		queryKey: ['rooms', 'newest'],
+		queryFn: () =>
+			getRooms({
+				sortBy: 'newest',
+				page: 1,
+				limit: 3,
+			}),
+	});
 
-	const topRatedRooms = [
-		{
-			id: '4',
-			title: 'Căn hộ cao cấp view đẹp',
-			address: 'Quận 7, TP. Hồ Chí Minh',
-			price: 7500000,
-			area: 40,
-			avgRating: 4.9,
-			reviewCount: 56,
-			images: [
-				{
-					id: '1',
-					url: 'https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'parking', 'elevator'] as const,
-			featured: true,
-		},
-		{
-			id: '5',
-			title: 'Phòng VIP full nội thất',
-			address: 'Bình Thạnh, TP. Hồ Chí Minh',
-			price: 5200000,
-			area: 28,
-			avgRating: 4.7,
-			reviewCount: 38,
-			images: [
-				{
-					id: '2',
-					url: 'https://images.unsplash.com/photo-1556020685-ae41abfc9365?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'washing'] as const,
-		},
-		{
-			id: '6',
-			title: 'Studio sang trọng Quận 3',
-			address: 'Quận 3, TP. Hồ Chí Minh',
-			price: 6200000,
-			area: 32,
-			avgRating: 4.8,
-			reviewCount: 45,
-			images: [
-				{
-					id: '3',
-					url: 'https://images.unsplash.com/photo-1540518614846-7eded433c457?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'kitchen'] as const,
-		},
-		{
-			id: '7',
-			title: 'Phòng mới xây có gác lửng',
-			address: 'Phú Nhuận, TP. Hồ Chí Minh',
-			price: 4800000,
-			area: 26,
-			avgRating: 4.6,
-			reviewCount: 32,
-			images: [
-				{
-					id: '4',
-					url: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=800',
-				},
-			],
-			amenities: ['wifi', 'ac', 'bathroom'] as const,
-		},
-	];
+	// Fetch top rated rooms
+	const { data: topRatedRooms, isLoading: ratingLoading } = useQuery({
+		queryKey: ['rooms', 'top-rated'],
+		queryFn: () =>
+			getRooms({
+				sortBy: 'rating',
+				page: 1,
+				limit: 4,
+			}),
+	});
+
+	const isLoading = newestLoading || ratingLoading;
 
 	return (
 		<div className='bg-background'>
@@ -278,9 +184,18 @@ const HomePage = () => {
 					</div>
 
 					<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-						{latestRooms.map((room) => (
-							<RoomCard room={room} key={room.id} layout='grid' />
-						))}
+						{isLoading ?
+							Array.from({ length: 3 }).map((_, i) => (
+								<div key={i} className='space-y-4'>
+									<Skeleton className='h-48 w-full rounded-xl' />
+									<Skeleton className='h-4 w-3/4' />
+									<Skeleton className='h-4 w-1/2' />
+								</div>
+							))
+						:	latestRooms?.data.map((room) => (
+								<RoomCard room={room} key={room.id} layout='grid' />
+							))
+						}
 					</div>
 				</div>
 			</div>
@@ -297,9 +212,18 @@ const HomePage = () => {
 					</Link>
 				</div>
 				<div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
-					{topRatedRooms.map((room) => (
-						<RoomCard room={room} key={room.id} layout='grid' />
-					))}
+					{isLoading ?
+						Array.from({ length: 4 }).map((_, i) => (
+							<div key={i} className='space-y-4'>
+								<Skeleton className='h-48 w-full rounded-xl' />
+								<Skeleton className='h-4 w-3/4' />
+								<Skeleton className='h-4 w-1/2' />
+							</div>
+						))
+					:	topRatedRooms?.data.map((room) => (
+							<RoomCard room={room} key={room.id} layout='grid' />
+						))
+					}
 				</div>
 			</div>
 

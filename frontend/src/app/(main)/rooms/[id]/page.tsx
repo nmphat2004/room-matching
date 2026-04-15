@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import ReviewForm from '@/components/review/review-form';
 import AmenityIcon from '@/components/room/amenity-icon';
@@ -70,307 +69,368 @@ const RoomDetailPage = () => {
 	};
 
 	return (
-		<div className='bg-background'>
-			<div className='max-w-7xl mx-auto px-4 py-6'>
+		<div className='bg-background min-h-screen'>
+			<div className='max-w-7xl mx-auto px-4 py-6 md:py-10 text-pretty'>
 				{/* Photo Gallery */}
-				<div className='grid grid-cols-4 gap-2 h-[400px] rounded-xl overflow-hidden'>
-					<div className='col-span-2 row-span-2 relative'>
-						{primaryImage && (
-							<Image
-								src={primaryImage.url}
-								alt={room.title}
-								width={800}
-								height={800}
-								className='w-full h-full object-cover'
-							/>
-						)}
-					</div>
-					{otherImages.map((image, index) => (
-						<div key={index} className='relative'>
-							<Image
-								src={image.url}
-								alt={`${room.title} ${index + 2}`}
-								width={800}
-								height={800}
-								className='w-full h-full object-cover'
-							/>
+				<section className='relative mb-8'>
+					<div className='grid grid-cols-1 md:grid-cols-4 gap-2 h-[300px] md:h-[450px] rounded-2xl overflow-hidden shadow-sm'>
+						<div className='md:col-span-2 md:row-span-2 relative h-full'>
+							{primaryImage && (
+								<Image
+									src={primaryImage.url}
+									alt={room.title}
+									fill
+									className='object-cover hover:scale-105 transition-transform duration-500'
+									priority
+								/>
+							)}
 						</div>
-					))}
-					<Button
-						variant='ghost'
-						onClick={() => setShowAllPhotos(true)}
-						className='absolute bottom-4 right-4 bg-white px-4 py-2 rounded-lg border border-border hover:bg-secondary transition-colors'>
-						Xem tất cả {room.images.length} ảnh
-					</Button>
-				</div>
+						{otherImages.length > 0 ?
+							otherImages.map((image, index) => (
+								<div
+									key={index}
+									className={`relative h-full ${index >= 2 ? 'hidden md:block' : ''}`}>
+									<Image
+										src={image.url}
+										alt={`${room.title} ${index + 2}`}
+										fill
+										className='object-cover hover:scale-110 transition-transform duration-500'
+									/>
+								</div>
+							))
+						:	<div className='hidden md:block col-span-2 row-span-2 bg-secondary/30 items-center justify-center'>
+								<p className='text-muted-foreground'>No more images</p>
+							</div>
+						}
+						<Button
+							variant='secondary'
+							size='sm'
+							onClick={() => setShowAllPhotos(true)}
+							className='absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border shadow-sm hover:bg-white'>
+							Xem tất cả {room.images.length} ảnh
+						</Button>
+					</div>
+				</section>
 
-				<div className='grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8'>
+				<div className='grid grid-cols-1 lg:grid-cols-3 gap-10'>
 					{/* Main Content */}
-					<div className='lg:col-span-2'>
-						{/* Tittle */}
-						<div>
-							<h1 className='mb-3'>{room.title}</h1>
-							<div className='flex items-center gap-4 text-sm text-muted-foreground mb-4'>
+					<div className='lg:col-span-2 space-y-8'>
+						{/* Title & Stats */}
+						<div className='space-y-4'>
+							<h1 className='text-2xl md:text-3xl font-bold tracking-tight'>
+								{room.title}
+							</h1>
+							<div className='flex flex-wrap items-center gap-y-2 gap-4 text-sm text-muted-foreground'>
 								<div className='flex items-center gap-1.5'>
-									<MapPin className='w-4 h-4' />
+									<MapPin className='w-4 h-4 text-primary' />
 									<span>{room.address}</span>
 								</div>
-								<a href='#' className='text-primary hover:underline'>
+								<button className='text-primary font-medium hover:underline transition-all'>
 									Xem bản đồ
-								</a>
+								</button>
+								<div className='flex items-center gap-4 ml-auto'>
+									<span className='flex items-center gap-1'>
+										<Eye className='w-4 h-4' /> {room.viewCount} lượt xem
+									</span>
+								</div>
 							</div>
 
-							<div className='flex items-center gap-4 mb-6'>
-								{room.area && (
-									<span className='text-sm text-gray-600'>{room.area}m²</span>
-								)}
-								{room.floor && (
-									<span className='text-sm text-gray-600'>
-										Tầng {room.floor}
-									</span>
-								)}
-								{room.avgRating > 0 && (
+							<div className='flex flex-wrap items-center gap-6 p-4 bg-secondary/20 rounded-xl border border-border/50'>
+								<div className='space-y-1'>
+									<p className='text-xs text-muted-foreground uppercase font-semibold'>
+										Diện tích
+									</p>
+									<p className='font-medium'>{room.area} m²</p>
+								</div>
+								<Separator orientation='vertical' className='h-8' />
+								<div className='space-y-1'>
+									<p className='text-xs text-muted-foreground uppercase font-semibold'>
+										Tầng
+									</p>
+									<p className='font-medium'>{room.floor || '--'}</p>
+								</div>
+								<Separator orientation='vertical' className='h-8' />
+								<div className='space-y-1'>
+									<p className='text-xs text-muted-foreground uppercase font-semibold'>
+										Đánh giá
+									</p>
 									<div className='flex items-center gap-1'>
 										<StarRating
 											rating={room.avgRating}
 											totalReviews={room.reviewCount}
 										/>
 									</div>
-								)}
-								<div className='flex items-center gap-1 text-gray-400 text-sm'>
-									<Eye className='w-4 h-4' />
-									<span>{room.viewCount} lượt xem</span>
 								</div>
 							</div>
 						</div>
 
-						<div className='mb-6'>
-							<PriceTag amount={room.price} size='lg' />
-							<p className='text-sm text-muted-foreground mt-1'>
-								Điện: {Number(room.electricityCost).toLocaleString('vi-VN')}/kWh
-								• Nước: {Number(room.waterCost).toLocaleString('vi-VN')}/tháng
-							</p>
+						{/* Price Component */}
+						<div className='p-6 bg-primary/5 rounded-2xl border border-primary/10'>
+							<div className='flex items-baseline gap-2'>
+								<PriceTag amount={room.price} size='lg' />
+							</div>
+							<div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 py-4 border-t border-primary/10'>
+								<div className='flex items-center gap-2'>
+									<div className='w-2 h-2 rounded-full bg-yellow-500' />
+									<p className='text-sm'>
+										Điện:{' '}
+										<span className='font-semibold'>
+											{Number(room.electricityCost).toLocaleString('vi-VN')}đ
+										</span>
+										/kWh
+									</p>
+								</div>
+								<div className='flex items-center gap-2'>
+									<div className='w-2 h-2 rounded-full bg-blue-500' />
+									<p className='text-sm'>
+										Nước:{' '}
+										<span className='font-semibold'>
+											{Number(room.waterCost).toLocaleString('vi-VN')}đ
+										</span>
+										/tháng
+									</p>
+								</div>
+							</div>
 						</div>
-					</div>
 
-					<Separator />
+						<Separator />
 
-					{/* Description */}
-					<div>
-						<h2 className='mb-3'>Mô tả</h2>
-						<p className='text-foreground whitespace-pre-line'>
-							{room.description}
-						</p>
-					</div>
+						{/* Regulations */}
+						<div className='space-y-4'>
+							<h2 className='text-xl font-bold'>Quy định & Hợp đồng</h2>
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+								<div className='p-4 bg-secondary/10 rounded-xl border'>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Tiền đặt cọc
+									</p>
+									<div className='font-bold text-primary'>
+										<PriceTag amount={room.price} size='lg' />
+									</div>
+								</div>
+								<div className='p-4 bg-secondary/10 rounded-xl border'>
+									<p className='text-sm text-muted-foreground mb-1'>
+										Thời gian ở tối thiểu
+									</p>
+									<p className='text-lg font-bold'>{room.minStay}</p>
+								</div>
+							</div>
+						</div>
 
-					<Separator />
+						<Separator />
 
-					{/* Amenities */}
-					{room.amenities && room.amenities.length > 0 && (
-						<>
-							<div>
-								<h2 className='mb-4'>Tiện nghi</h2>
-								<div className='grid grid-cols-2 md:grid-cols-3 gap-4'>
+						{/* Amenities */}
+						{room.amenities && room.amenities.length > 0 && (
+							<div className='space-y-6'>
+								<h2 className='text-xl font-bold'>Tiện nghi phòng</h2>
+								<div className='grid grid-cols-2 md:grid-cols-4 gap-6'>
 									{room.amenities.map(({ amenity }) => (
-										<div key={amenity.id} className='flex gap-2'>
+										<div
+											key={amenity.id}
+											className='flex flex-col items-center p-4 rounded-xl border border-transparent hover:border-primary/20 hover:bg-primary/5 transition-all text-center gap-3'>
 											<AmenityIcon icon={amenity.icon} size='md' />
-											<span className='text-foreground'>{amenity.name}</span>
+											<span className='text-sm font-medium'>
+												{amenity.name}
+											</span>
 										</div>
 									))}
 								</div>
 							</div>
-						</>
-					)}
+						)}
 
-					<Separator />
+						<Separator />
 
-					{/* House Rules */}
-					<div>
-						<h2 className='mb-4'>Quy định</h2>
-						<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-							<div>
-								<p className='text-sm text-muted-foreground'>Tiền đặt cọc</p>
-								<p>{Number(room.deposit).toLocaleString('vi-VN')}</p>
-							</div>
-							<div>
-								<p className='text-sm text-muted-foreground'>
-									Thời gian ở tối thiểu
+						{/* Description */}
+						<div className='space-y-4'>
+							<h2 className='text-xl font-bold'>Mô tả chi tiết</h2>
+							<div className='prose prose-sm max-w-none text-foreground'>
+								<p className='whitespace-pre-line leading-relaxed'>
+									{room.description}
 								</p>
-								<p>{room.minStay}</p>
 							</div>
 						</div>
-					</div>
 
-					<Separator />
+						<Separator />
 
-					{/* Reviews */}
-					<div>
-						<div className='flex items-center gap-4 mb-6'>
-							<div className='text-center'>
-								<div className='text-4xl mb-1'>{room.avgRating}</div>
-								<StarRating rating={room.avgRating} size='md' />
-								<p className='text-sm text-muted-foreground mt-1'>
-									{reviewData?.meta?.total || 0} đánh giá
-								</p>
-							</div>
-							<div className='flex-1 space-y-2'>
-								{Object.entries(scores).map(([key, value]) => (
-									<div key={key} className='flex items-center gap-3'>
-										<span className='text-sm w-32 text-gray-500'>
-											{key === 'cleanRating' && 'Sạch sẽ'}
-											{key === 'securityRating' && 'An ninh'}
-											{key === 'locationRating' && 'Vị trí'}
-											{key === 'landlordRating' && 'Chủ nhà'}
-											{key === 'rating' && 'Tổng quan'}
-										</span>
-										<div className='flex-1 bg-secondary rounded-full h-1.5'>
-											<div
-												className='bg-primary rounded-full h-1.5'
-												style={{
-													width: `${((value as number) / 5) * 100}%`,
-												}}
-											/>
+						{/* Reviews Section */}
+						<div className='space-y-8 py-4'>
+							<div className='flex flex-col md:flex-row md:items-center gap-8'>
+								<div className='flex flex-col items-center justify-center p-6 bg-primary/5 rounded-2xl border border-primary/10 w-full md:w-48'>
+									<span className='text-5xl font-black text-primary'>
+										{Number(room.avgRating).toFixed(1)}
+									</span>
+									<StarRating rating={room.avgRating} size='md' />
+									<p className='text-xs text-muted-foreground mt-2 font-medium'>
+										{reviewData?.meta?.total || 0} ĐÁNH GIÁ
+									</p>
+								</div>
+								<div className='flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3'>
+									{Object.entries(scores).map(([key, value]) => (
+										<div key={key} className='space-y-1.5'>
+											<div className='flex justify-between text-xs font-semibold uppercase text-muted-foreground'>
+												<span>
+													{key === 'cleanRating' && 'Sạch sẽ'}
+													{key === 'securityRating' && 'An ninh'}
+													{key === 'locationRating' && 'Vị trí'}
+													{key === 'landlordRating' && 'Chủ nhà'}
+													{key === 'rating' && 'Tổng quan'}
+												</span>
+												<span>{Number(value).toFixed(1)}</span>
+											</div>
+											<div className='h-2 bg-secondary rounded-full overflow-hidden'>
+												<div
+													className='h-full bg-primary rounded-full transition-all duration-1000'
+													style={{
+														width: `${((value as number) / 5) * 100}%`,
+													}}
+												/>
+											</div>
 										</div>
-										<span className='text-sm w-8 text-right'>
-											{(value as number)?.toFixed(1)}
-										</span>
-									</div>
-								))}
+									))}
+								</div>
 							</div>
-						</div>
 
-						<div className='space-y-6'>
-							{reviews.map((review) => (
-								<div
-									key={review.id}
-									className='border-b border-border pb-6 last:border-0'>
-									<div className='flex items-start gap-4'>
-										<Avatar />
-										<div className='flex-1'>
-											<div className='flex items-center justify-between mb-1'>
+							<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+								{reviews.map((review) => (
+									<div
+										key={review.id}
+										className='p-5 rounded-2xl border bg-card hover:shadow-md transition-shadow flex flex-col gap-4'>
+										<div className='flex items-center justify-between'>
+											<div className='flex items-center gap-3'>
+												<Avatar className='border-2 border-primary/10'>
+													<AvatarImage
+														src={review.reviewer.avatarUrl}
+														alt={review.reviewer.fullName}
+													/>
+													<AvatarFallback>
+														{review.reviewer.fullName?.charAt(0)}
+													</AvatarFallback>
+												</Avatar>
 												<div>
-													<p className='font-medium'>
+													<p className='font-bold text-sm'>
 														{review.reviewer.fullName}
 													</p>
-													<p className='text-xs text-muted-foreground'>
+													<p className='text-[10px] text-muted-foreground uppercase tracking-widest'>
 														{new Date(review.createdAt).toLocaleDateString(
 															'vi-VN',
 														)}
 													</p>
 												</div>
+											</div>
+											<div className='px-2 py-1 bg-primary/10 rounded-lg'>
 												<StarRating rating={review.rating} size='sm' />
 											</div>
-											<p className='text-foreground text-sm leading-relaxed'>
-												{review.comment}
-											</p>
-											{review.sentiment && (
-												<Badge
-													variant='outline'
-													className={`mt-2 text-xs ${
-														review.sentiment === 'positive' ?
-															'text-green-600 border-green-300 '
-														: review.sentiment === 'negative' ?
-															'text-red-600 border-red-300'
-														:	'text-gray-600'
-													}`}>
-													{review.sentiment === 'positive' ?
-														'😊 Tích cực'
-													: review.sentiment === 'negative' ?
-														'😞 Tiêu cực'
-													:	'😐 Trung lập'}
-												</Badge>
-											)}
 										</div>
+										<p className='text-sm text-foreground/80 italic line-clamp-3'>
+											&quot;{review.comment}&quot;
+										</p>
+										{review.sentiment && (
+											<Badge
+												variant='secondary'
+												className={`w-fit text-[10px] font-bold ${
+													review.sentiment === 'positive' ?
+														'bg-green-100 text-green-700 hover:bg-green-100'
+													: review.sentiment === 'negative' ?
+														'bg-red-100 text-red-700 hover:bg-red-100'
+													:	'bg-gray-100 text-gray-700 hover:bg-gray-100'
+												}`}>
+												{review.sentiment === 'positive' ?
+													'TÍCH CỰC'
+												: review.sentiment === 'negative' ?
+													'TIÊU CỰC'
+												:	'TRUNG LẬP'}
+											</Badge>
+										)}
 									</div>
-								</div>
-							))}
-						</div>
-
-						{/* Review Form */}
-						{user && user.id !== room.owner.id && (
-							<div className='mt-6'>
-								<ReviewForm roomId={room.id} />
-							</div>
-						)}
-					</div>
-
-					<Separator />
-
-					{/* Similar Rooms */}
-					{/* <div>
-							<h2 className='mb-4'>Phòng tương tự</h2>
-							<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-								{similarRooms.map((room) => (
-									<RoomCard key={room.id} room={room} layout='grid' />
 								))}
 							</div>
-						</div> */}
-				</div>
 
-				{/* Sidebar */}
-				<div className='lg:col-span-1'>
-					<div className='sticky top-24 space-y-4'>
-						{/* Landlord Card */}
-						<div className='bg-card border border-border rounded-xl p-6'>
-							<div className='flex items-center gap-3 mb-4'>
-								<Avatar className='w-12 h-12'>
-									<AvatarImage src={room.owner.avatarUrl} />
-									<AvatarFallback className='bg-blue-100 text-primary'>
-										{room.owner.fullName?.charAt(0)}
-									</AvatarFallback>
-								</Avatar>
-								<div>
-									<p className='font-semibold'>{room.owner.fullName}</p>
-									<p className='text-xs text-foreground'>Chủ trọ</p>
+							{/* Review Form */}
+							{user && user.id !== room.owner.id && (
+								<div className='pt-6 border-t'>
+									<h3 className='text-lg font-bold mb-4'>Viết đánh giá</h3>
+									<ReviewForm roomId={room.id} />
 								</div>
-								<div>
-									<p className='text-sm text-muted-foreground'>
-										Thành viên từ{' '}
-										{new Date(room.owner.createdAt).toLocaleDateString('vi-VN')}
-									</p>
-								</div>
-							</div>
-
-							<div className='space-y-3'>
-								<div className='text-center p-3 bg-secondary rounded-lg'>
-									{phoneRevealed ?
-										<p className='text-lg'>{room.owner.phone}</p>
-									:	<button
-											onClick={() => setPhoneRevealed(true)}
-											className='text-primary hover:underline'>
-											Hiện số điện thoại
-										</button>
-									}
-								</div>
-
-								<Link href='/messages' className='block'>
-									<Button variant='default' className='w-full'>
-										<MessageCircle className='w-4 h-4 mr-2' />
-										Nhắn tin ngay
-									</Button>
-								</Link>
-
-								<Button variant='secondary' className='w-full'>
-									<Phone className='w-4 h-4 mr-2' />
-									Gọi điện
-								</Button>
-
-								<Button
-									variant='ghost'
-									className='w-full'
-									onClick={() => setSaved(!saved)}>
-									<Heart
-										className={`w-4 h-4 mr-2 ${saved ? 'fill-red-500 text-red-500' : ''}`}
-									/>
-									{saved ? 'Đã lưu' : 'Lưu phòng'}
-								</Button>
-
-								<Button variant='ghost' className='w-full'>
-									<Share2 className='w-4 h-4 mr-2' />
-									Chia sẻ
-								</Button>
-							</div>
+							)}
 						</div>
+					</div>
+
+					{/* Sidebar */}
+					<div className='lg:col-span-1'>
+						<aside className='sticky top-28 space-y-6'>
+							{/* Landlord Card */}
+							<div className='bg-card border border-border rounded-3xl p-8'>
+								<div className='flex flex-col items-center text-center space-y-4 mb-8'>
+									<div className='relative'>
+										<Avatar className='w-24 h-24 border-4 border-white shadow-xl'>
+											<AvatarImage src={room.owner.avatarUrl} />
+											<AvatarFallback className='bg-linear-to-br from-blue-500 to-indigo-600 text-white text-3xl font-bold'>
+												{room.owner.fullName?.charAt(0)}
+											</AvatarFallback>
+										</Avatar>
+										<div className='absolute bottom-1 right-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full' />
+									</div>
+									<div className='space-y-1'>
+										<h3 className='text-xl font-bold'>{room.owner.fullName}</h3>
+										<p className='text-xs text-muted-foreground'>
+											Thành viên từ{' '}
+											{new Date(room.owner.createdAt).toLocaleDateString()}
+										</p>
+									</div>
+								</div>
+
+								<div className='space-y-3'>
+									<div className='group relative overflow-hidden p-px rounded-lg border border-primary'>
+										<div className='bg-white rounded-lg p-3 text-center '>
+											{phoneRevealed ?
+												<p className='text-xl font-bold text-primary tracking-tighter'>
+													{room.owner.phone}
+												</p>
+											:	<button
+													onClick={() => setPhoneRevealed(true)}
+													className='w-full text-sm font-bold text-primary'>
+													HIỆN SỐ ĐIỆN THOẠI
+												</button>
+											}
+										</div>
+									</div>
+
+									<Link href='/chat' className='block'>
+										<Button
+											variant='default'
+											className='w-full h-12 rounded-lg text-sm font-bold hover:bg-primary/90 transition-all'>
+											<MessageCircle className='w-4 h-4 mr-2' />
+											NHẮN TIN NGAY
+										</Button>
+									</Link>
+
+									<Button
+										variant='outline'
+										className='w-full h-12 rounded-lg text-sm font-bold border-2 hover:bg-secondary/50'>
+										<Phone className='w-4 h-4 mr-2' />
+										GỌI ĐIỆN
+									</Button>
+
+									<div className='grid grid-cols-2 gap-3 pt-4'>
+										<Button
+											variant='ghost'
+											className={`h-12 rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
+											onClick={() => setSaved(!saved)}>
+											<Heart
+												className={`w-4 h-4 mr-2 ${saved ? 'fill-red-500 text-red-500 animate-pulse' : ''}`}
+											/>
+											{saved ? 'ĐÃ LƯU' : 'LƯU PHÒNG'}
+										</Button>
+
+										<Button
+											variant='ghost'
+											className='h-12 rounded-xl text-xs font-bold border hover:bg-secondary'>
+											<Share2 className='w-4 h-4 mr-2' />
+											CHIA SẺ
+										</Button>
+									</div>
+								</div>
+							</div>
+						</aside>
 					</div>
 				</div>
 			</div>

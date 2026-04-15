@@ -87,10 +87,14 @@ const ReviewForm = ({ roomId }: Props) => {
 				placeholder='Chia sẻ trải nghiệm của bạn... (tùy chọn)'
 				value={comment}
 				onChange={(e) => setComment(e.target.value)}
-				className='mb-3 bg-white'
+				className='mb-3 bg-white border-border'
 				rows={3}
 			/>
-			<Button onClick={handleSubmit} type='submit' className='w-full'>
+			<Button
+				onClick={handleSubmit}
+				type='submit'
+				size='lg'
+				className='w-full h-10 hover:bg-primary/90'>
 				{isLoading ?
 					<>
 						<Loader2 className='w-4 h-4 mr-2 animate-spin' /> Đang gửi
