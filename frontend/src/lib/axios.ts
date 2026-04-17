@@ -4,7 +4,6 @@ import { refreshToken } from './api/auth.api';
 
 const api = axios.create({
 	baseURL: process.env.NEXT_PUBLIC_API_URL,
-	headers: { 'Content-Type': 'application/json' },
 });
 
 let isRefreshing = false;
@@ -21,9 +20,16 @@ const processQueue = (error: any, token: string | null = null) => {
 	refreshQueue = [];
 };
 
+// Set JSON content-type for non-FormData requests
 api.interceptors.request.use((config) => {
 	const token = localStorage.getItem('accessToken');
 	if (token) config.headers.Authorization = `Bearer ${token}`;
+
+	// Only set Content-Type for JSON if data is not FormData
+	if (config.data && !(config.data instanceof FormData)) {
+		config.headers['Content-Type'] = 'application/json';
+	}
+
 	return config;
 });
 

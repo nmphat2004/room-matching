@@ -23,7 +23,7 @@ export class UserController {
   @ApiOperation({ summary: 'Update profile' })
   updateMe(
     @Req() req: any,
-    @Body() dto: { fullName?: string; phone?: string },
+    @Body() dto: { fullName?: string; phone?: string; avatarUrl?: string },
   ) {
     return this.userService.update(req.user.id, dto);
   }

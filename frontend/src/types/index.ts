@@ -5,6 +5,7 @@ export interface User {
 	role: 'ADMIN' | 'LANDLORD' | 'RENTER';
 	phone?: string;
 	avatarUrl?: string;
+	createdAt?: string;
 }
 
 export interface Room {

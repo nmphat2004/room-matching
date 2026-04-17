@@ -49,7 +49,10 @@ export class UserService {
     });
   }
 
-  async update(id: string, data: { fullName?: string; phone?: string }) {
+  async update(
+    id: string,
+    data: { fullName?: string; phone?: string; avatarUrl?: string },
+  ) {
     return this.prisma.user.update({
       where: { id },
       data,

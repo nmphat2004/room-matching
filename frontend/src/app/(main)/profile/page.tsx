@@ -1,20 +1,42 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
-import { useState } from 'react';
-import { Camera, Lock, Heart } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Camera, Lock, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import RoomCard from '@/components/room/room-card';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getMe, updateMe } from '@/lib/api/user.api';
+import { uploadImage } from '@/lib/api/upload.api';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import z from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 
 type Tab = 'personal' | 'security' | 'notifications' | 'saved';
 
+const schema = z.object({
+	fullName: z.string().min(2, 'Họ và tên ít nhất 2 kí tự'),
+	role: z.enum(['RENTER', 'LANDLORD']),
+	phone: z.string().min(10, 'Số điện thoại phải có 10 số'),
+});
+
+type FormData = z.infer<typeof schema>;
+
 const ProfilePage = () => {
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const queryClient = useQueryClient();
+
 	const [activeTab, setActiveTab] = useState<Tab>('personal');
-	const [fullName, setFullName] = useState('Nguyen Van Hung');
-	const [phone, setPhone] = useState('912345678');
-	const [bio, setBio] = useState('');
 	const [currentPassword, setCurrentPassword] = useState('');
 	const [newPassword, setNewPassword] = useState('');
 	const [confirmNewPassword, setConfirmNewPassword] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+	const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
 
 	const [notifications, setNotifications] = useState({
 		newMessage: true,
@@ -24,6 +46,107 @@ const ProfilePage = () => {
 		weeklyDigest: false,
 		promotional: false,
 	});
+
+	const {
+		register,
+		handleSubmit,
+		reset,
+		formState: { errors },
+	} = useForm<FormData>({
+		resolver: zodResolver(schema),
+		defaultValues: {
+			fullName: '',
+			role: 'RENTER',
+			phone: '',
+		},
+	});
+
+	const { data, isLoading: isLoadingUser } = useQuery({
+		queryKey: ['me'],
+		queryFn: getMe,
+	});
+
+	// Reset form khi data được load
+	useEffect(() => {
+		if (data) {
+			reset({
+				fullName: data.fullName || '',
+				role: (data.role as 'RENTER' | 'LANDLORD') || 'RENTER',
+				phone: data.phone || '',
+			});
+		}
+	}, [data, reset]);
+
+	const onSubmit = async (formData: FormData) => {
+		setIsLoading(true);
+		try {
+			await updateMe(formData);
+			queryClient.invalidateQueries({ queryKey: ['me'] });
+			toast.success('Cập nhật thành công');
+		} catch (error: any) {
+			toast.error(error.response?.data?.message || 'Cập nhật thất bại');
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleAvatarUpload = async (file: File) => {
+		if (!file) return;
+
+		// Validate file type
+		if (!file.type.match(/^image\/(jpg|jpeg|png|webp)$/)) {
+			toast.error('Chỉ hỗ trợ file ảnh (jpg, jpeg, png, webp)');
+			return;
+		}
+
+		// Validate file size (5MB)
+		if (file.size > 5 * 1024 * 1024) {
+			toast.error('Kích thước file không được vượt quá 5MB');
+			return;
+		}
+
+		try {
+			setIsUploadingAvatar(true);
+
+			// Create preview
+			const reader = new FileReader();
+			reader.onload = (e) => {
+				setPreviewAvatar(e.target?.result as string);
+			};
+			reader.readAsDataURL(file);
+
+			// Upload to server
+			const imageUrl = await uploadImage(file);
+
+			// Update user with new avatar URL
+			await updateMe({ avatarUrl: imageUrl });
+
+			// Reset preview and refetch user data
+			setPreviewAvatar(null);
+			queryClient.invalidateQueries({ queryKey: ['me'] });
+			toast.success('Cập nhật ảnh đại diện thành công');
+		} catch (error: any) {
+			setPreviewAvatar(null);
+			toast.error(error.response?.data?.message || 'Cập nhật ảnh đại diện thất bại');
+		} finally {
+			setIsUploadingAvatar(false);
+			// Reset file input
+			if (fileInputRef.current) {
+				fileInputRef.current.value = '';
+			}
+		}
+	};
+
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (file) {
+			handleAvatarUpload(file);
+		}
+	};
+
+	const handleAvatarButtonClick = () => {
+		fileInputRef.current?.click();
+	};
 
 	const savedRooms = [
 		{
@@ -79,15 +202,11 @@ const ProfilePage = () => {
 	];
 
 	const tabs = [
-		{ id: 'personal' as Tab, label: 'Personal Information' },
-		{ id: 'security' as Tab, label: 'Security' },
-		{ id: 'notifications' as Tab, label: 'Notifications' },
-		{ id: 'saved' as Tab, label: 'Saved Rooms' },
+		{ id: 'personal' as Tab, label: 'Thông tin cá nhân' },
+		{ id: 'security' as Tab, label: 'Bảo mật' },
+		{ id: 'notifications' as Tab, label: 'Thông báo' },
+		{ id: 'saved' as Tab, label: 'Phòng đã lưu' },
 	];
-
-	const handleSaveProfile = () => {
-		console.log('Saving profile...', { fullName, phone, bio });
-	};
 
 	const handleUpdatePassword = () => {
 		if (newPassword !== confirmNewPassword) {
@@ -103,25 +222,28 @@ const ProfilePage = () => {
 
 	return (
 		<div className='min-h-screen bg-secondary'>
-			{/* Simplified header for this standalone page */}
-			<div className='bg-white border-b border-border'>
-				<div className='max-w-6xl mx-auto px-6 py-4'>
-					<h1 className='text-2xl font-semibold'>Profile & Settings</h1>
-				</div>
-			</div>
-
 			<div className='max-w-6xl mx-auto px-6 py-8'>
+				{/* Hidden File Upload Input */}
+				<input
+					type='file'
+					ref={fileInputRef}
+					accept='image/jpg,image/jpeg,image/png,image/webp'
+					onChange={handleFileChange}
+					className='hidden'
+				/>
+
 				{/* Tabs */}
 				<div className='bg-white rounded-xl shadow-sm mb-6'>
-					<div className='border-b border-border flex overflow-x-auto'>
+					<div>
 						{tabs.map((tab) => (
 							<Button
+								variant='default'
 								key={tab.id}
 								onClick={() => setActiveTab(tab.id)}
-								className={`px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+								className={`px-8 py-5 text-sm font-medium whitespace-nowrap transition-colors ${
 									activeTab === tab.id ?
-										'border-primary text-primary'
-									:	'border-transparent text-muted-foreground hover:text-secondary-foreground'
+										' text-white'
+									:	'border-transparent bg-white text-muted-foreground hover:text-secondary-foreground hover:bg-secondary'
 								}`}>
 								{tab.label}
 							</Button>
@@ -131,27 +253,44 @@ const ProfilePage = () => {
 					<div className='p-6'>
 						{/* Personal Information Tab */}
 						{activeTab === 'personal' && (
-							<div className='space-y-6'>
+							<form onSubmit={handleSubmit(onSubmit)} className='space-y-6'>
 								{/* Profile Section */}
 								<div className='flex items-start gap-6 pb-6 border-b border-border'>
 									<div className='relative'>
-										<div className='w-20 h-20 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-semibold'>
-											NH
-										</div>
-										<Button className='absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full border-2 border-border flex items-center justify-center hover:bg-secondary'>
-											<Camera size={14} className='text-muted-foreground' />
+										<Avatar className='w-20 h-20 cursor-pointer'>
+											<AvatarImage src={previewAvatar || data?.avatarUrl} />
+											<AvatarFallback className='bg-primary/90 text-white text-xl'>
+												{data?.fullName?.charAt(0).toUpperCase()}
+											</AvatarFallback>
+										</Avatar>
+										<Button
+											onClick={handleAvatarButtonClick}
+											disabled={isUploadingAvatar}
+											className='absolute bottom-0 right-0 w-7 h-7 bg-white rounded-full border-2 border-border flex items-center justify-center hover:bg-secondary disabled:opacity-50'>
+											{isUploadingAvatar ?
+												<Loader2 size={14} className='text-muted-foreground animate-spin' />
+											:	<Camera size={14} className='text-muted-foreground' />
+											}
 										</Button>
 									</div>
 									<div>
-										<h2 className='text-xl mb-1'>Nguyen Van Hung</h2>
+										<h2 className='text-xl mb-1'>{data?.fullName}</h2>
 										<div className='flex items-center gap-2 mb-2'>
-											<Badge variant='default'>Tenant</Badge>
+											<Badge variant='outline' className='text-primary'>
+												{data?.role === 'RENTER' ? 'Người thuê' : 'Chủ trọ'}
+											</Badge>
 											<span className='text-sm text-muted-foreground'>
-												Member since Jan 2024
+												Thành viên từ{' '}
+												{data?.createdAt &&
+													new Date(data.createdAt).toLocaleDateString()}
 											</span>
 										</div>
-										<Button className='text-sm text-primary hover:underline'>
-											Change Avatar
+										<Button
+											variant='outline'
+											className='text-sm text-primary'
+											onClick={handleAvatarButtonClick}
+											disabled={isUploadingAvatar}>
+											{isUploadingAvatar ? 'Đang tải lên...' : 'Đổi ảnh đại diện'}
 										</Button>
 									</div>
 								</div>
@@ -160,76 +299,87 @@ const ProfilePage = () => {
 								<div className='space-y-4'>
 									<div>
 										<label className='block text-sm font-medium mb-2'>
-											Full name
+											Họ và tên
 										</label>
-										<input
+										<Input
 											type='text'
-											value={fullName}
-											onChange={(e) => setFullName(e.target.value)}
+											{...register('fullName')}
 											className='w-full h-11 px-3 bg-input-background border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-prtext-primary'
 										/>
+										{errors.fullName && (
+											<p className='text-xs text-red-500 mt-1'>
+												{errors.fullName.message}
+											</p>
+										)}
 									</div>
 
 									<div>
-										<label className='block text-sm font-medium mb-2'>
+										<Label className='block text-sm font-medium mb-2'>
+											Loại tài khoản
+										</Label>
+										<select
+											{...register('role')}
+											className='w-full h-11 px-3 bg-input-background border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-prtext-primary'>
+											<option value='RENTER'>Người thuê</option>
+											<option value='LANDLORD'>Chủ trọ</option>
+										</select>
+										{errors.role && (
+											<p className='text-xs text-red-500 mt-1'>
+												{errors.role.message}
+											</p>
+										)}
+									</div>
+
+									<div>
+										<Label className='block text-sm font-medium mb-2'>
 											Email
-										</label>
+										</Label>
 										<div className='relative'>
-											<input
+											<Input
 												type='email'
-												value='hung.nguyen@email.com'
+												value={data?.email ?? ''}
 												disabled
-												className='w-full h-11 px-3 pr-8 bg-borborder-border border border-transparent rounded-lg text-muted-foreground cursor-not-allowed'
+												className='w-full h-11 px-3 pr-8 bg-secondary border border-border rounded-lg text-muted-foreground cursor-not-allowed'
 											/>
 											<Lock
 												className='absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground'
 												size={16}
 											/>
 										</div>
-										<p className='text-xs text-muted-foreground mt-1'>
-											Email cannot be changed
+										<p className='text-xs text-red-500 mt-1'>
+											Email không thể thay đổi
 										</p>
 									</div>
 
 									<div>
 										<label className='block text-sm font-medium mb-2'>
-											Phone number
+											Số điện thoại
 										</label>
-										<div className='flex gap-2'>
-											<div className='w-16 h-11 bg-input-background rounded-lg flex items-center justify-center text-sm'>
-												+84
-											</div>
-											<input
-												type='tel'
-												value={phone}
-												onChange={(e) => setPhone(e.target.value)}
-												className='flex-1 h-11 px-3 bg-input-background border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-prtext-primary'
-											/>
-										</div>
-									</div>
-
-									<div>
-										<label className='block text-sm font-medium mb-2'>
-											Bio / About
-										</label>
-										<textarea
-											value={bio}
-											onChange={(e) => setBio(e.target.value)}
-											placeholder='Tell others about yourself...'
-											rows={4}
-											className='w-full px-3 py-2 bg-input-background border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-prtext-primary resize-none'
+										<Input
+											type='tel'
+											{...register('phone')}
+											className='w-full h-11 px-3 bg-input-background border border-transparent rounded-lg focus:outline-none focus:ring-2 focus:ring-prtext-primary'
 										/>
+										{errors.phone && (
+											<p className='text-xs text-red-500 mt-1'>
+												{errors.phone.message}
+											</p>
+										)}
 									</div>
 
-									<div className='flex justify-end'>
-										<Button
-											onClick={handleSaveProfile}
-											className='bg-prtext-primary text-white px-6 h-10 rounded-lg hover:bg-prtext-primary/90'>
-											Save Changes
-										</Button>
-									</div>
+									<Button
+										type='submit'
+										className='w-full h-11 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center'
+										disabled={isLoading || isLoadingUser}>
+										{isLoading ?
+											<>
+												<Loader2 className='mr-2 animate-spin' size={18} /> Đang
+												cập nhật
+											</>
+										:	'Cập nhật'}
+									</Button>
 								</div>
-							</div>
+							</form>
 						)}
 
 						{/* Security Tab */}
@@ -299,7 +449,7 @@ const ProfilePage = () => {
 													Temporarily disable your account
 												</p>
 											</div>
-											<Button className='px-4 h-9 border-2 border-red-500 text-red-600 rounded-lg hover:bg-red-50 text-sm'>
+											<Button className='px-4 h-9 border-2 border-red-500 text-red-600 rounded-lg bg-white hover:bg-red-50 text-sm'>
 												Deactivate
 											</Button>
 										</div>
