@@ -33,6 +33,6 @@ export const createRoom = async (data: any) => {
 };
 
 export const getMyRoom = async () => {
-	const res = await api.get<Room>('/rooms/my-rooms');
+	const res = await api.get<Room[]>('/rooms/my-rooms');
 	return res.data;
 };

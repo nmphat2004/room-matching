@@ -1,121 +1,151 @@
 'use client';
-import { useState } from 'react';
-import { Search, Send, Smile, Paperclip, MoreVertical } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Send, MoreVertical, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Avatar } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import Image from 'next/image';
 import { PriceTag } from '@/components/room/price-tag';
-import { Button } from '@/components/ui/button';
+import {
+	getConversations,
+	getMessages,
+	getOrCreateConversation,
+} from '@/lib/api/chat.api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/auth.store';
+import useChatStore from '@/stores/chat.store';
+import useSocket from '@/hooks/useSocket';
+import { useSearchParams } from 'next/navigation';
+import { toast } from 'sonner';
 
 const MessagingPage = () => {
-	const [selectedConversation, setSelectedConversation] = useState('1');
+	const { user } = useAuthStore();
+	const searchParams = useSearchParams();
+	const roomId = searchParams.get('roomId');
+	const { joinConversation, sendMessage } = useSocket();
+	const {
+		conversations: storeConversations,
+		setConversations,
+		activeConversationId,
+		setActiveConversation,
+		messages,
+		setMessage,
+		addMessage,
+	} = useChatStore();
+
 	const [messageInput, setMessageInput] = useState('');
 	const [filterTab, setFilterTab] = useState('all');
+	const [searchText, setSearchText] = useState('');
 
-	const conversations = [
-		{
-			id: '1',
-			name: 'Trần Thị Mai',
-			avatar: '',
-			lastMessage: 'Phòng còn trống không ạ?',
-			timestamp: '10:30',
-			unread: 2,
-			online: true,
-			roomName: 'Phòng trọ cao cấp gần ĐH Bách Khoa',
-			roomId: '1',
-		},
-		{
-			id: '2',
-			name: 'Lê Minh Tuấn',
-			avatar: '',
-			lastMessage: 'Em muốn xem phòng vào cuối tuần được không ạ?',
-			timestamp: 'Hôm qua',
-			unread: 0,
-			online: false,
-			roomName: 'Studio hiện đại Quận 1',
-			roomId: '2',
-		},
-		{
-			id: '3',
-			name: 'Phạm Thu Hà',
-			avatar: '',
-			lastMessage: 'Cảm ơn chủ nhà nhiều ạ!',
-			timestamp: '2 ngày trước',
-			unread: 0,
-			online: true,
-			roomName: 'Căn hộ mini đầy đủ tiện nghi',
-			roomId: '3',
-		},
-		{
-			id: '4',
-			name: 'Nguyễn Văn Bình',
-			avatar: '',
-			lastMessage: 'Điện nước tính như thế nào ạ?',
-			timestamp: '3 ngày trước',
-			unread: 1,
-			online: false,
-			roomName: 'Phòng đẹp giá rẻ gần chợ',
-			roomId: '4',
-		},
-	];
+	const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
+		queryKey: ['chat-conversations'],
+		queryFn: getConversations,
+	});
 
-	const messages = [
-		{
-			id: '1',
-			sender: 'them',
-			content: 'Chào chủ nhà, em xem tin phòng trọ cao cấp gần ĐH Bách Khoa.',
-			timestamp: '09:45',
-		},
-		{
-			id: '2',
-			sender: 'them',
-			content: 'Phòng còn trống không ạ?',
-			timestamp: '09:46',
-		},
-		{
-			id: '3',
-			sender: 'me',
-			content: 'Chào bạn! Phòng vẫn còn trống nhé.',
-			timestamp: '09:50',
-		},
-		{
-			id: '4',
-			sender: 'me',
-			content: 'Bạn có thể qua xem phòng vào cuối tuần này được không?',
-			timestamp: '09:51',
-		},
-		{
-			id: '5',
-			sender: 'them',
-			content: 'Dạ được ạ, em có thể qua xem vào Chủ nhật được không ạ?',
-			timestamp: '10:15',
-		},
-		{
-			id: '6',
-			sender: 'me',
-			content:
-				'Được nhé, khoảng 2 giờ chiều nhé. Mình sẽ gửi địa chỉ chi tiết cho bạn.',
-			timestamp: '10:20',
-		},
-		{
-			id: '7',
-			sender: 'them',
-			content: 'Cảm ơn chủ nhà ạ!',
-			timestamp: '10:30',
-		},
-	];
+	const { mutate: createConversation, isPending: isCreatingConversation } =
+		useMutation({
+			mutationFn: (id: string) => getOrCreateConversation(id),
+			onSuccess: (conversation) => {
+				setConversations([conversation, ...storeConversations]);
+				setActiveConversation(conversation.id);
+			},
+			onError: () => {
+				toast.error('Không thể mở cuộc trò chuyện');
+			},
+		});
 
-	const currentConversation = conversations.find(
-		(c) => c.id === selectedConversation,
+	const { data: conversationMessages, isLoading: isLoadingMessages } = useQuery({
+		queryKey: ['chat-messages', activeConversationId],
+		queryFn: () => getMessages(activeConversationId as string, { page: 1, limit: 50 }),
+		enabled: Boolean(activeConversationId),
+	});
+
+	useEffect(() => {
+		if (!conversations.length) return;
+		setConversations(conversations);
+		if (!activeConversationId) {
+			setActiveConversation(conversations[0].id);
+		}
+	}, [conversations, activeConversationId, setActiveConversation, setConversations]);
+
+	useEffect(() => {
+		if (!conversationMessages || !activeConversationId) return;
+		setMessage(activeConversationId, conversationMessages.data);
+	}, [conversationMessages, activeConversationId, setMessage]);
+
+	useEffect(() => {
+		if (!roomId || !user) return;
+		const existed = storeConversations.find((item) => item.roomId === roomId);
+		if (existed) {
+			setActiveConversation(existed.id);
+			return;
+		}
+		createConversation(roomId);
+	}, [roomId, user, createConversation, setActiveConversation, storeConversations]);
+
+	useEffect(() => {
+		if (activeConversationId) {
+			joinConversation(activeConversationId);
+		}
+	}, [activeConversationId, joinConversation]);
+
+	const conversationList = useMemo(() => {
+		const normalized = storeConversations.map((conversation) => {
+			const partner =
+				conversation.owner.id === user?.id ? conversation.renter : conversation.owner;
+			const lastMessage = conversation.messages?.[0];
+			const unread = lastMessage?.senderId !== user?.id ? 1 : 0;
+			return {
+				id: conversation.id,
+				roomId: conversation.roomId,
+				roomName: conversation.room.title,
+				roomPrice: conversation.room.price,
+				roomImage: conversation.room.images?.[0]?.url,
+				avatar: partner.avatarUrl,
+				name: partner.fullName,
+				lastMessage: lastMessage?.content || 'Bắt đầu cuộc trò chuyện',
+				timestamp: lastMessage?.sentAt || '',
+				unread,
+			};
+		});
+
+		const byFilter = normalized.filter((item) =>
+			filterTab === 'unread' ? item.unread > 0 : true,
+		);
+
+		if (!searchText.trim()) return byFilter;
+		const keyword = searchText.toLowerCase();
+		return byFilter.filter(
+			(item) =>
+				item.name.toLowerCase().includes(keyword) ||
+				item.roomName.toLowerCase().includes(keyword),
+		);
+	}, [storeConversations, user?.id, filterTab, searchText]);
+
+	const currentConversation = conversationList.find(
+		(item) => item.id === activeConversationId,
 	);
+	const currentMessages =
+		(activeConversationId && messages[activeConversationId]) || [];
 
 	const handleSendMessage = () => {
-		if (messageInput.trim()) {
-			console.log('Sending message:', messageInput);
-			setMessageInput('');
-		}
+		if (!activeConversationId || !messageInput.trim()) return;
+		sendMessage(activeConversationId, messageInput.trim());
+		addMessage({
+			id: `tmp-${Date.now()}`,
+			conversationId: activeConversationId,
+			senderId: user?.id || '',
+			content: messageInput.trim(),
+			sentAt: new Date().toISOString(),
+			sender: {
+				id: user?.id || '',
+				fullName: user?.fullName || 'You',
+				avatarUrl: user?.avatarUrl,
+			},
+		});
+		setMessageInput('');
 	};
 
 	return (
@@ -130,6 +160,8 @@ const MessagingPage = () => {
 								<Search className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground' />
 								<Input
 									placeholder='Tìm kiếm cuộc trò chuyện...'
+									value={searchText}
+									onChange={(e) => setSearchText(e.target.value)}
 									className='pl-10'
 								/>
 							</div>
@@ -159,26 +191,42 @@ const MessagingPage = () => {
 
 						{/* Conversation List */}
 						<div className='flex-1 overflow-y-auto'>
-							{conversations
-								.filter((conv) =>
-									filterTab === 'unread' ? conv.unread > 0 : true,
-								)
-								.map((conversation) => (
+							{isLoadingConversations || isCreatingConversation ?
+								<div className='h-full flex items-center justify-center'>
+									<Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+								</div>
+							: conversationList.length === 0 ?
+								<div className='h-full flex items-center justify-center px-4 text-center text-sm text-muted-foreground'>
+									Bạn chưa có cuộc trò chuyện nào
+								</div>
+							: conversationList.map((conversation) => (
 									<button
 										key={conversation.id}
-										onClick={() => setSelectedConversation(conversation.id)}
+										onClick={() => setActiveConversation(conversation.id)}
 										className={`w-full p-4 border-b border-border hover:bg-secondary transition-colors text-left ${
-											selectedConversation === conversation.id ?
+											activeConversationId === conversation.id ?
 												'bg-secondary'
 											:	''
 										}`}>
 										<div className='flex items-start gap-3'>
-											<Avatar />
+											<Avatar>
+												<AvatarImage src={conversation.avatar} />
+												<AvatarFallback>
+													{conversation.name?.charAt(0).toUpperCase()}
+												</AvatarFallback>
+											</Avatar>
 											<div className='flex-1 min-w-0'>
 												<div className='flex items-center justify-between mb-1'>
 													<p className='truncate'>{conversation.name}</p>
 													<span className='text-xs text-muted-foreground shrink-0 ml-2'>
-														{conversation.timestamp}
+														{conversation.timestamp ?
+															new Date(
+																conversation.timestamp,
+															).toLocaleTimeString('vi-VN', {
+																hour: '2-digit',
+																minute: '2-digit',
+															})
+														:	'--:--'}
 													</span>
 												</div>
 												<Badge variant='default' className='text-xs mb-2'>
@@ -197,7 +245,8 @@ const MessagingPage = () => {
 											</div>
 										</div>
 									</button>
-								))}
+								))
+							}
 						</div>
 					</div>
 
@@ -207,13 +256,16 @@ const MessagingPage = () => {
 							{/* Chat Header */}
 							<div className='p-4 border-b border-border bg-card flex items-center justify-between'>
 								<div className='flex items-center gap-3'>
-									<Avatar />
+									<Avatar>
+										<AvatarImage src={currentConversation.avatar} />
+										<AvatarFallback>
+											{currentConversation.name?.charAt(0).toUpperCase()}
+										</AvatarFallback>
+									</Avatar>
 									<div>
 										<p>{currentConversation.name}</p>
 										<p className='text-sm text-muted-foreground'>
-											{currentConversation.online ?
-												'Đang hoạt động'
-											:	'Không hoạt động'}
+											Đang trò chuyện về phòng
 										</p>
 									</div>
 								</div>
@@ -228,7 +280,10 @@ const MessagingPage = () => {
 									href={`/rooms/${currentConversation.roomId}`}
 									className='flex items-center gap-4 p-3 bg-card border border-border rounded-lg hover:shadow-md transition-shadow'>
 									<Image
-										src={`https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=200`}
+										src={
+											currentConversation.roomImage ||
+											'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=200'
+										}
 										alt={currentConversation.roomName}
 										width={200}
 										height={200}
@@ -236,7 +291,7 @@ const MessagingPage = () => {
 									/>
 									<div className='flex-1'>
 										<p className='mb-1'>{currentConversation.roomName}</p>
-										<PriceTag amount={4500000} size='sm' />
+										<PriceTag amount={currentConversation.roomPrice} size='sm' />
 									</div>
 									<Button variant='secondary' className='shrink-0'>
 										Xem tin
@@ -246,29 +301,37 @@ const MessagingPage = () => {
 
 							{/* Messages */}
 							<div className='flex-1 overflow-y-auto p-4 space-y-4'>
-								{messages.map((message, index) => {
+								{isLoadingMessages ?
+									<div className='h-full flex items-center justify-center'>
+										<Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+									</div>
+								: currentMessages.length === 0 ?
+									<div className='h-full flex items-center justify-center text-sm text-muted-foreground'>
+										Chưa có tin nhắn, hãy bắt đầu cuộc trò chuyện
+									</div>
+								: currentMessages.map((message, index) => {
 									const showTimestamp =
 										index === 0 ||
-										messages[index - 1].timestamp !== message.timestamp;
+										currentMessages[index - 1].sentAt !== message.sentAt;
 
 									return (
 										<div key={message.id}>
 											{showTimestamp && (
 												<div className='flex justify-center mb-4'>
 													<span className='text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full'>
-														{message.timestamp}
+														{new Date(message.sentAt).toLocaleString('vi-VN')}
 													</span>
 												</div>
 											)}
 											<div
 												className={`flex ${
-													message.sender === 'me' ?
+													message.senderId === user?.id ?
 														'justify-end'
 													:	'justify-start'
 												}`}>
 												<div
 													className={`max-w-[70%] px-4 py-2.5 rounded-2xl ${
-														message.sender === 'me' ?
+														message.senderId === user?.id ?
 															'bg-primary text-white rounded-br-sm'
 														:	'bg-secondary text-foreground rounded-bl-sm'
 													}`}>
@@ -283,10 +346,6 @@ const MessagingPage = () => {
 							{/* Message Input */}
 							<div className='p-4 border-t border-border bg-card'>
 								<div className='flex items-center gap-3'>
-									<button className='p-2 hover:bg-secondary rounded-lg transition-colors'>
-										<Paperclip className='w-5 h-5 text-muted-foreground' />
-									</button>
-
 									<div className='flex-1 relative'>
 										<Input
 											placeholder='Nhập tin nhắn...'
@@ -300,10 +359,6 @@ const MessagingPage = () => {
 											}}
 										/>
 									</div>
-
-									<button className='p-2 hover:bg-secondary rounded-lg transition-colors'>
-										<Smile className='w-5 h-5 text-muted-foreground' />
-									</button>
 
 									<Button
 										variant='default'

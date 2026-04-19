@@ -26,7 +26,10 @@ export interface Room {
 	avgRating: number;
 	reviewCount: number;
 	viewCount: number;
-	createdAt: number;
+	createdAt: string;
+	_count?: {
+		reviews: number;
+	};
 	owner: {
 		id: string;
 		fullName: string;
