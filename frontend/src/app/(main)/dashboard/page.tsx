@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
 	ListPlus,
 	MessageSquare,
@@ -11,16 +11,35 @@ import {
 	EyeOff,
 	Trash2,
 	RefreshCw,
+	Loader2,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
+import { useAuthStore } from '@/stores/auth.store';
+import { useRouter } from 'next/navigation';
 
 const DashboardPage = () => {
+	const { user, isLoading } = useAuthStore();
+	const router = useRouter();
 	const [activeTab, setActiveTab] = useState('listings');
 	const [filterStatus, setFilterStatus] = useState('all');
+
+	useEffect(() => {
+		if (!isLoading && (!user || user.role !== 'LANDLORD')) {
+			router.replace('/');
+		}
+	}, [isLoading, user, router]);
+
+	if (isLoading || !user || user.role !== 'LANDLORD') {
+		return (
+			<div className='min-h-screen flex items-center justify-center'>
+				<Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+			</div>
+		);
+	}
 
 	const stats = [
 		{ label: 'Tin đăng', value: '12', icon: ListPlus, color: 'text-blue-600' },

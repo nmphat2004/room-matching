@@ -85,10 +85,12 @@ const Header = () => {
 											<p className='text-gray-500 text-xs'>{user.email}</p>
 										</div>
 									</Link>
-									<DropdownMenuItem onClick={() => router.push('/dashboard')}>
-										<LayoutDashboard className='w-4 h-4 mr-2' />
-										Dashboard
-									</DropdownMenuItem>
+									{user.role === 'LANDLORD' && (
+										<DropdownMenuItem onClick={() => router.push('/dashboard')}>
+											<LayoutDashboard className='w-4 h-4 mr-2' />
+											Dashboard
+										</DropdownMenuItem>
+									)}
 									<DropdownMenuItem
 										onClick={handleLogout}
 										className='text-red-500'>

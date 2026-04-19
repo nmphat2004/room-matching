@@ -10,20 +10,27 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getReviews } from '@/lib/api/review.api';
 import { getRoomById } from '@/lib/api/room.api';
+import {
+	getSavedRoomStatus,
+	saveRoom,
+	unsaveRoom,
+} from '@/lib/api/user.api';
 import { useAuthStore } from '@/stores/auth.store';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Heart, MapPin, MessageCircle, Phone, Share2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const RoomDetailPage = () => {
 	const { id } = useParams();
 	const { user } = useAuthStore();
+	const router = useRouter();
+	const queryClient = useQueryClient();
 	const [showAllPhotos, setShowAllPhotos] = useState(false);
 	const [phoneRevealed, setPhoneRevealed] = useState(false);
-	const [saved, setSaved] = useState(false);
 
 	const { data: room, isLoading } = useQuery({
 		queryKey: ['room', id],
@@ -34,6 +41,27 @@ const RoomDetailPage = () => {
 		queryKey: ['reviews', id],
 		queryFn: () => getReviews(id as string),
 		enabled: !!id,
+	});
+
+	const { data: savedRoomStatus } = useQuery({
+		queryKey: ['saved-room-status', id, user?.id],
+		queryFn: () => getSavedRoomStatus(id as string),
+		enabled: Boolean(id) && Boolean(user),
+	});
+
+	const { mutate: toggleSavedRoom, isPending: isSaving } = useMutation({
+		mutationFn: (saved: boolean) =>
+			saved ? unsaveRoom(id as string) : saveRoom(id as string),
+		onSuccess: (_, saved) => {
+			queryClient.invalidateQueries({
+				queryKey: ['saved-room-status', id, user?.id],
+			});
+			queryClient.invalidateQueries({ queryKey: ['saved-rooms'] });
+			toast.success(saved ? 'Đã bỏ lưu phòng' : 'Đã lưu phòng thành công');
+		},
+		onError: () => {
+			toast.error('Không thể cập nhật phòng đã lưu, vui lòng thử lại');
+		},
 	});
 
 	if (isLoading) {
@@ -60,6 +88,7 @@ const RoomDetailPage = () => {
 		room.images?.filter((img) => !img.isPrimary).slice(0, 4) || [];
 
 	const reviews = reviewData?.data || [];
+	const saved = Boolean(savedRoomStatus?.saved);
 	const scores = reviewData?.avgScores || {
 		cleanRating: 0,
 		securityRating: 0,
@@ -414,7 +443,15 @@ const RoomDetailPage = () => {
 										<Button
 											variant='ghost'
 											className={`h-12 rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
-											onClick={() => setSaved(!saved)}>
+										disabled={isSaving}
+										onClick={() => {
+											if (!user) {
+												toast.error('Vui lòng đăng nhập để lưu phòng');
+												router.push('/login');
+												return;
+											}
+											toggleSavedRoom(saved);
+										}}>
 											<Heart
 												className={`w-4 h-4 mr-2 ${saved ? 'fill-red-500 text-red-500 animate-pulse' : ''}`}
 											/>
