@@ -12,6 +12,8 @@ import {
 	getConversations,
 	getMessages,
 	getOrCreateConversation,
+	markConversationRead,
+	getUnreadSummary,
 } from '@/lib/api/chat.api';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
@@ -19,12 +21,14 @@ import useChatStore from '@/stores/chat.store';
 import useSocket from '@/hooks/useSocket';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useNotificationStore } from '@/stores/notification.store';
 
 const MessagingPage = () => {
 	const { user } = useAuthStore();
 	const searchParams = useSearchParams();
 	const roomId = searchParams.get('roomId');
 	const { joinConversation, sendMessage } = useSocket();
+	const { setUnreadSummary } = useNotificationStore();
 	const {
 		conversations: storeConversations,
 		setConversations,
@@ -107,7 +111,7 @@ const MessagingPage = () => {
 				name: partner.fullName,
 				lastMessage: lastMessage?.content || 'Bắt đầu cuộc trò chuyện',
 				timestamp: lastMessage?.sentAt || '',
-				unread,
+				unread: conversation.unreadCount ?? unread,
 			};
 		});
 
@@ -202,7 +206,20 @@ const MessagingPage = () => {
 							: conversationList.map((conversation) => (
 									<button
 										key={conversation.id}
-										onClick={() => setActiveConversation(conversation.id)}
+										onClick={async () => {
+											setActiveConversation(conversation.id);
+											try {
+												await markConversationRead(conversation.id);
+												const summary = await getUnreadSummary();
+												setUnreadSummary({
+													chatUnreadCount: summary.chatUnreadCount,
+													notificationUnreadCount:
+														summary.notificationUnreadCount,
+												});
+											} catch {
+												// ignore
+											}
+										}}
 										className={`w-full p-4 border-b border-border hover:bg-secondary transition-colors text-left ${
 											activeConversationId === conversation.id ?
 												'bg-secondary'

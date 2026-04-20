@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserService } from './users.service';
-import { JwtGuard } from '@/auth/guards/jwt.guard';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
 
 @ApiTags('Users')
 @Controller('users')
@@ -36,6 +36,14 @@ export class UserController {
     @Body() dto: { fullName?: string; phone?: string; avatarUrl?: string },
   ) {
     return this.userService.update(req.user.id, dto);
+  }
+
+  @Delete('me')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Xóa tài khoản (xóa mềm)' })
+  async deleteAccount(@Req() req: any) {
+    return this.userService.delete(req.user.id);
   }
 
   @Put('change-password')

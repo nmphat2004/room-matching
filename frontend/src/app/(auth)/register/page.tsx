@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Eye, EyeOff, Home, Loader2, Lock, Mail, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import z from 'zod';
 import { register as registerApi } from '@/lib/api/auth.api';
@@ -28,7 +28,7 @@ const RegisterPage = () => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const router = useRouter();
-	const { setAuth } = useAuthStore();
+	const { setAuth, user, isLoading: isAuthLoading } = useAuthStore();
 
 	const {
 		register,
@@ -56,6 +56,12 @@ const RegisterPage = () => {
 			setIsLoading(false);
 		}
 	};
+
+	useEffect(() => {
+		if (user) router.push('/');
+	}, [user, router]);
+
+	if (isAuthLoading || user) return null;
 
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-primary-foreground p-4'>

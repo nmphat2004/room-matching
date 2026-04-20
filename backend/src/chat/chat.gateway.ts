@@ -57,6 +57,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Lưu vào map
       this.connectedUsers.set(payload.sub, client.id);
+      await this.emitUnreadSummary(payload.sub);
 
       console.log(`✅ User ${payload.sub} connected — socket: ${client.id}`);
     } catch {
@@ -110,6 +111,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // Gửi tin nhắn đến tất cả user trong conversation room
       this.server.to(dto.conversationId).emit('new_message', message);
+      await this.emitUnreadSummary(message.senderId);
+
+      const receiverId =
+        message.conversation.ownerId === message.senderId
+          ? message.conversation.renterId
+          : message.conversation.ownerId;
+      await this.emitUnreadSummary(receiverId);
+      this.emitNotificationCreated(receiverId);
 
       return { success: true, message };
     } catch (error) {
@@ -138,5 +147,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.to(conversationId).emit('user_stop_typing', {
       userId: client.data.userId,
     });
+  }
+
+  private async emitUnreadSummary(userId: string) {
+    const socketId = this.connectedUsers.get(userId);
+    if (!socketId) return;
+    const summary = await this.chatService.getUnreadSummary(userId);
+    this.server.to(socketId).emit('unread_summary', summary);
+  }
+
+  private emitNotificationCreated(userId: string) {
+    const socketId = this.connectedUsers.get(userId);
+    if (!socketId) return;
+    this.server.to(socketId).emit('notification_created');
   }
 }

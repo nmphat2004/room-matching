@@ -36,7 +36,7 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const existing = await this.userService.findByEmail(dto.email);
-    if (existing) throw new ConflictException('Email already in use');
+    if (existing) throw new ConflictException('Email đã tồn tại');
 
     const user = await this.userService.create(dto);
     const tokens = this.generateTokens(user.id, user.email, user.role);
@@ -45,10 +45,14 @@ export class AuthService {
 
   async login(dto: LoginDto) {
     const user = await this.userService.findByEmail(dto.email);
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user)
+      throw new UnauthorizedException(
+        'Email không tồn tại hoặc tài khoản đã bị xóa',
+      );
 
     const isMatch = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isMatch) throw new UnauthorizedException('Invalid credentials');
+    if (!isMatch)
+      throw new UnauthorizedException('Sai tài khoản hoặc mật khẩu');
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...safeUser } = user;

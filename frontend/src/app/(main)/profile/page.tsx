@@ -5,11 +5,14 @@ import Personal from '@/components/profiles/personal';
 import Security from '@/components/profiles/security';
 import Notification from '@/components/profiles/notification';
 import SavedRooms from '@/components/profiles/saved-rooms';
+import { useSearchParams } from 'next/navigation';
 
 type Tab = 'personal' | 'security' | 'notifications' | 'saved';
 
 const ProfilePage = () => {
-	const [activeTab, setActiveTab] = useState<Tab>('personal');
+	const searchParams = useSearchParams();
+	const defaultTab = (searchParams.get('tab') as Tab) || 'personal';
+	const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
 
 	const tabs = [
 		{ id: 'personal' as Tab, label: 'Thông tin cá nhân' },

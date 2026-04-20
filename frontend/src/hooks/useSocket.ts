@@ -3,15 +3,17 @@
 'use client';
 import { useAuthStore } from '@/stores/auth.store';
 import useChatStore from '@/stores/chat.store';
+import { useNotificationStore } from '@/stores/notification.store';
 import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { getUnreadSummary } from '@/lib/api/chat.api';
 
 let socketInstance: Socket | null = null;
 
 const useSocket = () => {
 	const { accessToken, user } = useAuthStore();
-	const { addMessage, setTyping, incrementUnread, activeConversationId } =
-		useChatStore();
+	const { addMessage, setTyping } = useChatStore();
+	const { setUnreadSummary } = useNotificationStore();
 
 	useEffect(() => {
 		if (!accessToken || !user) return;
@@ -23,10 +25,24 @@ const useSocket = () => {
 		});
 
 		socketInstance.on('connect', () => console.log('Socket Connected!'));
+		getUnreadSummary()
+			.then((summary) => {
+				setUnreadSummary({
+					chatUnreadCount: summary.chatUnreadCount,
+					notificationUnreadCount: summary.notificationUnreadCount,
+				});
+			})
+			.catch(() => {});
 
 		socketInstance.on('new_message', (msg: any) => {
 			addMessage(msg);
-			if (msg.conversationId !== activeConversationId) incrementUnread();
+		});
+
+		socketInstance.on('unread_summary', (summary: any) => {
+			setUnreadSummary({
+				chatUnreadCount: summary.chatUnreadCount || 0,
+				notificationUnreadCount: summary.notificationUnreadCount || 0,
+			});
 		});
 
 		socketInstance.on('user_typing', ({ conversationId }: any) => {
@@ -40,7 +56,7 @@ const useSocket = () => {
 			socketInstance?.disconnect();
 			socketInstance = null;
 		};
-	}, [accessToken]);
+	}, [accessToken, user?.id, addMessage, setTyping, setUnreadSummary]);
 
 	const joinConversation = (id: string) => {
 		socketInstance?.emit('join_conversation', id);

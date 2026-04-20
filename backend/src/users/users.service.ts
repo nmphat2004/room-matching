@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-misused-promises */
-import { PrismaService } from '@/prisma/prisma.service';
+import { PrismaService } from 'src/prisma/prisma.service';
 import {
   BadRequestException,
   Injectable,
@@ -8,18 +7,22 @@ import {
 } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findFirst({ where: { email, isDeleted: false } });
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({
-      where: { id },
+    return this.prisma.user.findFirst({
+      where: { id, isDeleted: false },
       select: {
         id: true,
         fullName: true,
@@ -69,6 +72,15 @@ export class UserService {
         phone: true,
         role: true,
         avatarUrl: true,
+      },
+    });
+  }
+
+  async delete(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        isDeleted: true,
       },
     });
   }
@@ -129,6 +141,12 @@ export class UserService {
   }
 
   async saveRoom(userId: string, roomId: string) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      select: { id: true, title: true, ownerId: true },
+    });
+    if (!room) throw new BadRequestException('Room not found');
+
     await this.prisma.savedRoom.upsert({
       where: {
         userId_roomId: {
@@ -142,6 +160,16 @@ export class UserService {
         roomId,
       },
     });
+
+    if (room.ownerId !== userId) {
+      await this.notificationsService.create({
+        userId: room.ownerId,
+        type: 'SAVED_ROOM',
+        title: 'Tin đăng được lưu',
+        content: `Phòng "${room.title}" vừa được một người dùng lưu.`,
+        link: `/rooms/${room.id}`,
+      });
+    }
 
     return { saved: true };
   }

@@ -10,12 +10,14 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/auth.store';
+import useSocket from '@/hooks/useSocket';
 import {
 	Home,
 	LayoutDashboard,
 	LogOut,
 	MessageCircle,
 	PlusCircle,
+	UploadIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -23,6 +25,7 @@ import NotificationBell from './notification-bell';
 
 const Header = () => {
 	const { user, logout, isLoading } = useAuthStore();
+	useSocket();
 	const router = useRouter();
 
 	const handleLogout = () => {
@@ -86,10 +89,17 @@ const Header = () => {
 										</div>
 									</Link>
 									{user.role === 'LANDLORD' && (
-										<DropdownMenuItem onClick={() => router.push('/dashboard')}>
-											<LayoutDashboard className='w-4 h-4 mr-2' />
-											Dashboard
-										</DropdownMenuItem>
+										<>
+											<DropdownMenuItem
+												onClick={() => router.push('/dashboard')}>
+												<LayoutDashboard className='w-4 h-4 mr-2' />
+												Dashboard
+											</DropdownMenuItem>
+											<DropdownMenuItem onClick={() => router.push('/post')}>
+												<UploadIcon className='w-4 h-4 mr-2' />
+												Đăng tin mới
+											</DropdownMenuItem>
+										</>
 									)}
 									<DropdownMenuItem
 										onClick={handleLogout}

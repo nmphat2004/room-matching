@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { changePassword } from '@/lib/api/user.api';
+import { changePassword, deleteMe } from '@/lib/api/user.api';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -8,6 +8,8 @@ import z from 'zod';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { EyeOff, Eye, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth.store';
 
 const changePasswordSchema = z
 	.object({
@@ -32,6 +34,8 @@ const Security = () => {
 		new: false,
 		confirm: false,
 	});
+	const router = useRouter();
+	const { logout } = useAuthStore();
 
 	const {
 		register,
@@ -57,9 +61,21 @@ const Security = () => {
 			reset();
 		} catch (error: any) {
 			const msg = error.response?.data?.message;
-			toast.error(
-				Array.isArray(msg) ? msg[0] : msg || 'Đổi mật khẩu thất bại',
-			);
+			toast.error(Array.isArray(msg) ? msg[0] : msg || 'Đổi mật khẩu thất bại');
+		}
+	};
+
+	const handleDelete = async () => {
+		const confirm = window.confirm('Bạn có chắc là muốn xóa tài khoản?');
+		if (confirm) {
+			try {
+				await deleteMe();
+				logout();
+				toast.success('Xóa tài khoản thành công');
+				router.push('/');
+			} catch (error: any) {
+				toast.error(error.response?.data?.message || 'Xóa tài khoản thất bại');
+			}
 		}
 	};
 
@@ -68,9 +84,7 @@ const Security = () => {
 			{/* Change Password */}
 			<div>
 				<h3 className='text-lg font-medium mb-4'>Đổi mật khẩu</h3>
-				<form
-					onSubmit={handleSubmit(onSubmit)}
-					className='space-y-4 max-w-md'>
+				<form onSubmit={handleSubmit(onSubmit)} className='space-y-4 max-w-md'>
 					<div className='relative'>
 						<label className='block text-sm font-medium mb-2'>
 							Mật khẩu hiện tại
@@ -181,27 +195,20 @@ const Security = () => {
 
 			{/* Danger Zone */}
 			<div className='border-2 border-red-500 rounded-xl p-6 mt-8'>
-				<h3 className='text-lg font-medium text-red-600 mb-4'>Danger Zone</h3>
+				<h3 className='text-lg font-medium text-red-600 mb-4'>
+					Vùng nguy hiểm
+				</h3>
 				<div className='space-y-3'>
-					<div className='flex items-start justify-between'>
-						<div>
-							<p className='font-medium'>Vô hiệu hóa tài khoản</p>
-							<p className='text-sm text-muted-foreground'>
-								Temporarily disable your account
-							</p>
-						</div>
-						<Button className='px-4 h-9 border-2 border-red-500 text-red-600 rounded-lg bg-white hover:bg-red-50 text-sm'>
-							Vô hiệu hóa
-						</Button>
-					</div>
 					<div className='flex items-start justify-between pt-3 border-t border-red-200'>
 						<div>
 							<p className='font-medium'>Xóa tài khoản</p>
 							<p className='text-sm text-red-600'>
-								This action cannot be undone
+								Không thể hoàn tác hành động này
 							</p>
 						</div>
-						<Button className='px-4 h-9 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm'>
+						<Button
+							onClick={handleDelete}
+							className='px-4 h-9 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm'>
 							Xóa
 						</Button>
 					</div>

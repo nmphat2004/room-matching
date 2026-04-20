@@ -10,7 +10,7 @@ import { Eye, EyeOff, Home, Loader2, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +26,7 @@ const LoginPage = () => {
 	const router = useRouter();
 	const [isLoading, setIsLoading] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
-	const { setAuth } = useAuthStore();
+	const { user, setAuth, isLoading: isAuthLoading } = useAuthStore();
 
 	const {
 		register,
@@ -49,6 +49,12 @@ const LoginPage = () => {
 			setIsLoading(false);
 		}
 	};
+
+	useEffect(() => {
+		if (user) router.push('/');
+	}, [user, router]);
+
+	if (isAuthLoading || user) return null;
 
 	return (
 		<div className='min-h-screen flex items-center justify-center bg-primary-foreground p-4'>

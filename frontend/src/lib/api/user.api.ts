@@ -18,6 +18,11 @@ export const updateMe = async (data: UserData) => {
 	return res.data;
 };
 
+export const deleteMe = async () => {
+	const res = await api.delete<User>('/users/me');
+	return res.data;
+};
+
 export const changePassword = async (data: {
 	currentPassword: string;
 	newPassword: string;
@@ -37,11 +42,15 @@ export const getSavedRoomStatus = async (roomId: string) => {
 };
 
 export const saveRoom = async (roomId: string) => {
-	const res = await api.post<{ saved: boolean }>(`/users/saved-rooms/${roomId}`);
+	const res = await api.post<{ saved: boolean }>(
+		`/users/saved-rooms/${roomId}`,
+	);
 	return res.data;
 };
 
 export const unsaveRoom = async (roomId: string) => {
-	const res = await api.delete<{ saved: boolean }>(`/users/saved-rooms/${roomId}`);
+	const res = await api.delete<{ saved: boolean }>(
+		`/users/saved-rooms/${roomId}`,
+	);
 	return res.data;
 };

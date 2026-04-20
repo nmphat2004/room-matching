@@ -50,13 +50,13 @@ const SavedRooms = () => {
 				</div>
 			:	<div className='text-center py-16'>
 					<Heart className='mx-auto mb-4 border-border' size={64} />
-					<h3 className='text-xl mb-2'>No saved rooms yet</h3>
+					<h3 className='text-xl mb-2'>Không có phòng đã lưu</h3>
 					<p className='text-muted-foreground mb-6'>
-						Start exploring to save your favorite rooms
+						Bắt đầu khám phá để lưu phòng yêu thích của bạn
 					</p>
 					<Link href='/rooms'>
 						<Button className='bg-primary text-white px-6 h-10 rounded-lg'>
-							Start exploring
+							Bắt đầu khám phá
 						</Button>
 					</Link>
 				</div>

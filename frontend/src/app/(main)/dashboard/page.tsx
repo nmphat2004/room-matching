@@ -1,12 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import {
-	ListPlus,
-	MessageSquare,
-	Eye,
-	Star,
-	Loader2,
-} from 'lucide-react';
+import { ListPlus, MessageSquare, Eye, Star, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -35,11 +29,12 @@ const DashboardPage = () => {
 		enabled: Boolean(user?.id && user.role === 'LANDLORD'),
 	});
 
-	const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
-		queryKey: ['dashboard-conversations'],
-		queryFn: getConversations,
-		enabled: Boolean(user?.id && user.role === 'LANDLORD'),
-	});
+	const { data: conversations = [], isLoading: isLoadingConversations } =
+		useQuery({
+			queryKey: ['dashboard-conversations'],
+			queryFn: getConversations,
+			enabled: Boolean(user?.id && user.role === 'LANDLORD'),
+		});
 
 	if (isLoading || !user || user.role !== 'LANDLORD') {
 		return (
@@ -128,8 +123,10 @@ const DashboardPage = () => {
 									<Link href='/chat'>
 										<Button variant='outline'>Tin nhắn</Button>
 									</Link>
-									<Link href='/post-listing'>
-										<Button variant='default' className='bg-accent hover:bg-accent/90'>
+									<Link href='/post'>
+										<Button
+											variant='default'
+											className='bg-accent hover:bg-accent/90'>
 											<ListPlus className='w-4 h-4 mr-2' />
 											Đăng tin mới
 										</Button>

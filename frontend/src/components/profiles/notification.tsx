@@ -1,49 +1,116 @@
+import {
+	getNotificationPreferences,
+	getNotifications,
+	markAllNotificationRead,
+	markNotificationRead,
+	updateNotificationPreferences,
+} from '@/lib/api/notification.api';
+import { useNotificationStore } from '@/stores/notification.store';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Bell, CheckCheck, Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '../ui/button';
 
 const Notification = () => {
-	const [notifications, setNotifications] = useState({
-		newMessage: true,
-		savedListing: true,
-		newReview: true,
-		priceAlert: true,
-		weeklyDigest: false,
-		promotional: false,
+	const queryClient = useQueryClient();
+	const { chatUnreadCount, setUnreadSummary } = useNotificationStore();
+	const [localPreferences, setLocalPreferences] = useState<{
+		newMessage: boolean;
+		savedListing: boolean;
+		newReview: boolean;
+		priceAlert: boolean;
+	} | null>(null);
+
+	const { data: preferences, isLoading: loadingPreferences } = useQuery({
+		queryKey: ['notification-preferences'],
+		queryFn: getNotificationPreferences,
 	});
+	const { data: notifications = [], isLoading: loadingNotifications } =
+		useQuery({
+			queryKey: ['notifications'],
+			queryFn: getNotifications,
+		});
+
+	const savePreferencesMutation = useMutation({
+		mutationFn: updateNotificationPreferences,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });
+			toast.success('Đã lưu cài đặt thông báo');
+		},
+		onError: () => toast.error('Không thể lưu cài đặt'),
+	});
+
+	const markReadMutation = useMutation({
+		mutationFn: markNotificationRead,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['notifications'] });
+			const unread = Math.max(
+				0,
+				notifications.filter((item) => !item.isRead).length - 1,
+			);
+			setUnreadSummary({
+				chatUnreadCount,
+				notificationUnreadCount: unread,
+			});
+		},
+	});
+
+	const markAllReadMutation = useMutation({
+		mutationFn: markAllNotificationRead,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['notifications'] });
+			setUnreadSummary({
+				chatUnreadCount,
+				notificationUnreadCount: 0,
+			});
+			toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
+		},
+	});
+
+	const selectedPreferences = localPreferences || preferences;
+
+	if (loadingPreferences || loadingNotifications || !selectedPreferences) {
+		return (
+			<div className='py-16 flex justify-center'>
+				<Loader2 className='h-8 w-8 animate-spin text-muted-foreground' />
+			</div>
+		);
+	}
+
 	return (
 		<div className='space-y-6'>
-			<h3 className='text-lg font-medium mb-4'>Notification Preferences</h3>
+			<div className='flex items-center justify-between gap-3'>
+				<h3 className='text-lg font-medium'>Cài đặt thông báo</h3>
+				<Button
+					variant='outline'
+					onClick={() => markAllReadMutation.mutate()}
+					disabled={markAllReadMutation.isPending}>
+					<CheckCheck className='w-4 h-4 mr-2' />
+					Đọc tất cả
+				</Button>
+			</div>
 			<div className='space-y-4'>
 				{[
 					{
 						key: 'newMessage',
-						label: 'New message received',
-						desc: 'Get notified when someone sends you a message',
+						label: 'Khi có tin nhắn mới',
+						desc: 'Nhận thông báo khi có ai đó gửi tin nhắn cho bạn',
 					},
 					{
 						key: 'savedListing',
-						label: 'Someone saved my listing',
-						desc: 'Know when your room gets saved by potential tenants',
+						label: 'Khi có người lưu phòng của bạn',
+						desc: 'Nhận thông báo khi có người lưu phòng của bạn',
 					},
 					{
 						key: 'newReview',
-						label: 'New review on my room',
-						desc: 'Be alerted when someone reviews your listing',
+						label: 'Khi có đánh giá mới trên phòng của bạn',
+						desc: 'Nhận thông báo khi có ai đó đánh giá phòng của bạn',
 					},
 					{
 						key: 'priceAlert',
-						label: 'Price drop alerts for saved rooms',
-						desc: 'Get notified about price changes on saved rooms',
-					},
-					{
-						key: 'weeklyDigest',
-						label: 'Rental market weekly digest',
-						desc: 'Weekly summary of market trends and new listings',
-					},
-					{
-						key: 'promotional',
-						label: 'Promotional emails',
-						desc: 'Receive special offers and promotional content',
+						label: 'Khi giá phòng giảm',
+						desc: 'Nhận thông báo khi giá phòng giảm',
 					},
 				].map((item) => (
 					<div
@@ -56,10 +123,14 @@ const Notification = () => {
 						<label className='relative inline-flex items-center cursor-pointer ml-4'>
 							<input
 								type='checkbox'
-								checked={notifications[item.key as keyof typeof notifications]}
+								checked={
+									selectedPreferences[
+										item.key as keyof typeof selectedPreferences
+									]
+								}
 								onChange={(e) =>
-									setNotifications({
-										...notifications,
+									setLocalPreferences({
+										...selectedPreferences,
 										[item.key]: e.target.checked,
 									})
 								}
@@ -72,9 +143,45 @@ const Notification = () => {
 			</div>
 
 			<div className='flex justify-end pt-4'>
-				<Button className='bg-primary text-white px-6 h-10 rounded-lg'>
-					Save Preferences
+				<Button
+					className='bg-primary text-white px-6 h-10 rounded-lg'
+					onClick={() => savePreferencesMutation.mutate(selectedPreferences)}
+					disabled={savePreferencesMutation.isPending}>
+					Lưu cài đặt
 				</Button>
+			</div>
+
+			<div className='pt-4 border-t space-y-3'>
+				<h4 className='font-medium'>Thông báo gần đây</h4>
+				{notifications.length === 0 ?
+					<div className='text-sm text-muted-foreground'>
+						Chưa có thông báo nào
+					</div>
+				:	notifications.map((item) => (
+						<button
+							type='button'
+							key={item.id}
+							onClick={() => {
+								if (!item.isRead) {
+									markReadMutation.mutate(item.id);
+								}
+							}}
+							className={`w-full text-left p-3 rounded-lg border transition-colors ${item.isRead ? 'bg-card' : 'bg-primary/5 border-primary/30'}`}>
+							<div className='flex items-start gap-3'>
+								<Bell className='w-4 h-4 mt-1 text-primary' />
+								<div className='flex-1'>
+									<p className='font-medium text-sm'>{item.title}</p>
+									<p className='text-sm text-muted-foreground'>
+										{item.content}
+									</p>
+									<p className='text-xs text-muted-foreground mt-1'>
+										{new Date(item.createdAt).toLocaleString('vi-VN')}
+									</p>
+								</div>
+							</div>
+						</button>
+					))
+				}
 			</div>
 		</div>
 	);

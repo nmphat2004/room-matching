@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
+  Patch,
   Controller,
   Get,
   Post,
@@ -12,8 +13,8 @@ import {
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtGuard } from 'src/auth/guards/jwt.guard';
 import { CreateConversationDto } from './dto/chat.dto';
+import { JwtGuard } from 'src/auth/guards/jwt.guard';
 
 @ApiTags('Chat')
 @UseGuards(JwtGuard)
@@ -26,6 +27,12 @@ export class ChatController {
   @ApiOperation({ summary: 'Get my conversations' })
   getConversation(@Req() req: any) {
     return this.chatService.getConversations(req.user.id);
+  }
+
+  @Get('unread-summary')
+  @ApiOperation({ summary: 'Get unread chat and notification summary' })
+  getUnreadSummary(@Req() req: any) {
+    return this.chatService.getUnreadSummary(req.user.id);
   }
 
   @Get('conversations/:id/messages')
@@ -43,5 +50,11 @@ export class ChatController {
   @ApiOperation({ summary: 'Start a conversation about a room' })
   getOrCreate(@Req() req: any, @Body() dto: CreateConversationDto) {
     return this.chatService.getOrCreateConversation(req.user.id, dto);
+  }
+
+  @Patch('conversations/:id/read')
+  @ApiOperation({ summary: 'Mark conversation as read' })
+  markConversationRead(@Req() req: any, @Param('id') id: string) {
+    return this.chatService.markConversationAsRead(id, req.user.id);
   }
 }

@@ -1,17 +1,25 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateConversationDto, SendMessageDto } from './dto/chat.dto';
+import { PrismaService } from 'src/prisma/prisma.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notificationsService: NotificationsService,
+  ) {}
 
   async getConversations(userId: string) {
-    return this.prisma.conversation.findMany({
+    const conversations = await this.prisma.conversation.findMany({
       where: {
         OR: [{ renterId: userId }, { ownerId: userId }],
       },
@@ -45,9 +53,31 @@ export class ChatService {
           orderBy: { sentAt: 'desc' },
           take: 1,
         },
+        reads: {
+          where: { userId },
+          take: 1,
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    return Promise.all(
+      conversations.map(async (conversation) => {
+        const lastReadAt = conversation.reads?.[0]?.lastReadAt ?? new Date(0);
+        const unreadCount = await this.prisma.message.count({
+          where: {
+            conversationId: conversation.id,
+            senderId: { not: userId },
+            sentAt: { gt: lastReadAt },
+          },
+        });
+
+        return {
+          ...conversation,
+          unreadCount,
+        };
+      }),
+    );
   }
 
   async getMessages(
@@ -82,6 +112,8 @@ export class ChatService {
       }),
       this.prisma.message.count({ where: { conversationId } }),
     ]);
+
+    await this.markConversationAsRead(conversationId, userId);
 
     return {
       data: messages.reverse(),
@@ -125,7 +157,7 @@ export class ChatService {
 
     if (existing) return existing;
 
-    return await this.prisma.conversation.create({
+    const created = await this.prisma.conversation.create({
       data: {
         roomId: dto.roomId,
         renterId,
@@ -142,6 +174,16 @@ export class ChatService {
         renter: { select: { id: true, fullName: true, avatarUrl: true } },
       },
     });
+
+    await this.prisma.conversationRead.createMany({
+      data: [
+        { conversationId: created.id, userId: renterId },
+        { conversationId: created.id, userId: room.ownerId },
+      ],
+      skipDuplicates: true,
+    });
+
+    return created;
   }
 
   async saveMessage(senderId: string, dto: SendMessageDto) {
@@ -158,7 +200,7 @@ export class ChatService {
       throw new ForbiddenException('Not your conversation');
     }
 
-    return this.prisma.message.create({
+    const createdMessage = await this.prisma.message.create({
       data: {
         conversationId: dto.conversationId,
         senderId,
@@ -168,7 +210,90 @@ export class ChatService {
         sender: {
           select: { id: true, fullName: true, avatarUrl: true },
         },
+        conversation: {
+          select: { id: true, ownerId: true, renterId: true },
+        },
       },
     });
+
+    const receiverId =
+      conversation.ownerId === senderId
+        ? conversation.renterId
+        : conversation.ownerId;
+    await this.notificationsService.create({
+      userId: receiverId,
+      type: 'NEW_MESSAGE',
+      title: 'Tin nhắn mới',
+      content: createdMessage.content,
+      link: `/chat`,
+    });
+
+    return createdMessage;
+  }
+
+  async markConversationAsRead(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, ownerId: true, renterId: true },
+    });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    if (conversation.ownerId !== userId && conversation.renterId !== userId) {
+      throw new ForbiddenException('Not your conversation');
+    }
+
+    await this.prisma.conversationRead.upsert({
+      where: {
+        conversationId_userId: {
+          conversationId,
+          userId,
+        },
+      },
+      update: { lastReadAt: new Date() },
+      create: { conversationId, userId, lastReadAt: new Date() },
+    });
+
+    return { success: true };
+  }
+
+  async getUnreadSummary(userId: string) {
+    const conversations = await this.prisma.conversation.findMany({
+      where: {
+        OR: [{ renterId: userId }, { ownerId: userId }],
+      },
+      select: { id: true },
+    });
+    const conversationIds = conversations.map((item) => item.id);
+    const reads = await this.prisma.conversationRead.findMany({
+      where: {
+        userId,
+        conversationId: { in: conversationIds },
+      },
+    });
+
+    const readMap = new Map(
+      reads.map((item) => [item.conversationId, item.lastReadAt]),
+    );
+    let chatUnreadCount = 0;
+    for (const conversation of conversations) {
+      const lastReadAt = readMap.get(conversation.id) ?? new Date(0);
+      chatUnreadCount += await this.prisma.message.count({
+        where: {
+          conversationId: conversation.id,
+          senderId: { not: userId },
+          sentAt: { gt: lastReadAt },
+        },
+      });
+    }
+
+    const notificationUnreadCount = await this.prisma.notification.count({
+      where: { userId, isRead: false },
+    });
+
+    return {
+      chatUnreadCount,
+      notificationUnreadCount,
+      totalUnreadCount: chatUnreadCount + notificationUnreadCount,
+    };
   }
 }

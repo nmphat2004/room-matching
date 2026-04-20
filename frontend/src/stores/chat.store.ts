@@ -15,10 +15,16 @@ interface Conversation {
 	roomId: string;
 	renterId: string;
 	ownerId: string;
-	room: { id: string; title: string; price: number; image: any[] };
+	room: {
+		id: string;
+		title: string;
+		price: number;
+		images?: { id: string; url: string; isPrimary: boolean }[];
+	};
 	renter: { id: string; fullName: string; avatarUrl?: string };
 	owner: { id: string; fullName: string; avatarUrl?: string };
 	messages: Message[];
+	unreadCount?: number;
 }
 
 interface ChatState {

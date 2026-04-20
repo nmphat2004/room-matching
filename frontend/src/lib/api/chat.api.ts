@@ -57,3 +57,19 @@ export const getOrCreateConversation = async (roomId: string) => {
 	const res = await api.post<Conversation>('/chat/conversations', { roomId });
 	return res.data;
 };
+
+export const markConversationRead = async (conversationId: string) => {
+	const res = await api.patch<{ success: boolean }>(
+		`/chat/conversations/${conversationId}/read`,
+	);
+	return res.data;
+};
+
+export const getUnreadSummary = async () => {
+	const res = await api.get<{
+		chatUnreadCount: number;
+		notificationUnreadCount: number;
+		totalUnreadCount: number;
+	}>('/chat/unread-summary');
+	return res.data;
+};
