@@ -57,6 +57,10 @@ export class CreateRoomDto {
   @IsString()
   minStay: string;
 
+  @ApiProperty({ example: 'Không cho nuôi chó mèo' })
+  @IsString()
+  rule: string;
+
   @ApiProperty({ example: '123 Nguyễn Huệ, Quận 1, TPHCM' })
   @IsNotEmpty()
   @IsString()
@@ -147,6 +151,10 @@ export class UpdateRoomDto {
   @IsNotEmpty()
   @IsString()
   minStay: string;
+
+  @ApiProperty({ example: 'Không cho nuôi chó mèo' })
+  @IsString()
+  rule: string;
 
   @ApiProperty({ required: false })
   @IsNotEmpty()

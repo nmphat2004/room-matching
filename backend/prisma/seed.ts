@@ -88,6 +88,7 @@ async function main() {
         waterCost: '100000',
         deposit: priceValue.toString(),
         minStay: '6 tháng',
+        rule: '',
         address: `${Math.floor(Math.random() * 500) + 1} Đường CMT8, ${district}, TP.HCM`,
         area: Math.floor(Math.random() * (50 - 15) + 15),
         floor: Math.floor(Math.random() * 10) + 1,

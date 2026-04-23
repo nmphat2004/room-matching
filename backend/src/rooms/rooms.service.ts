@@ -24,6 +24,7 @@ export class RoomsService {
         minStay: dto.minStay,
         description: dto.description,
         address: dto.address,
+        rule: dto.rule,
         lat: dto.lat,
         lng: dto.lng,
         area: dto.area,
