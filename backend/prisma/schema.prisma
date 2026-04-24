@@ -57,7 +57,7 @@ model Room {
   waterCost       Decimal
   deposit       Decimal
   minStay     String
-  rule        String
+  rule        String?
   address     String
   lat         Float?
   lng         Float?

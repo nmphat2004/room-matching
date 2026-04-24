@@ -225,7 +225,7 @@ export class ChatService {
       type: 'NEW_MESSAGE',
       title: 'Tin nhắn mới',
       content: createdMessage.content,
-      link: `/chat`,
+      link: `/chat?conversationId=${dto.conversationId}`,
     });
 
     return createdMessage;

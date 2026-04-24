@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/auth.store';
 import useSocket from '@/hooks/useSocket';
+import { useNotificationStore } from '@/stores/notification.store';
 import {
 	Home,
 	LayoutDashboard,
@@ -25,6 +26,7 @@ import NotificationBell from './notification-bell';
 
 const Header = () => {
 	const { user, logout, isLoading } = useAuthStore();
+	const { chatUnreadCount } = useNotificationStore();
 	useSocket();
 	const router = useRouter();
 
@@ -67,8 +69,13 @@ const Header = () => {
 					: user ?
 						<>
 							<Link href='/chat'>
-								<Button variant='ghost' size='icon'>
+								<Button variant='ghost' size='icon' className='relative'>
 									<MessageCircle className='w-5 h-5' />
+									{chatUnreadCount > 0 && (
+										<span className='absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white'>
+											{chatUnreadCount}
+										</span>
+									)}
 								</Button>
 							</Link>
 							<NotificationBell />

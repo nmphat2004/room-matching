@@ -1,42 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from 'zustand';
+import { ChatMessage, Conversation as ApiConversation } from '@/lib/api/chat.api';
 
-interface Message {
-	id: string;
-	conversationId: string;
-	senderId: string;
-	content: string;
-	sentAt: string;
-	sender: { id: string; fullName: string; avatarUrl?: string };
-}
-
-interface Conversation {
-	id: string;
-	roomId: string;
-	renterId: string;
-	ownerId: string;
-	room: {
-		id: string;
-		title: string;
-		price: number;
-		images?: { id: string; url: string; isPrimary: boolean }[];
-	};
-	renter: { id: string; fullName: string; avatarUrl?: string };
-	owner: { id: string; fullName: string; avatarUrl?: string };
-	messages: Message[];
+interface Conversation extends ApiConversation {
 	unreadCount?: number;
 }
 
 interface ChatState {
 	conversations: Conversation[];
 	activeConversationId: string | null;
-	messages: Record<string, Message[]>;
+	messages: Record<string, ChatMessage[]>;
 	unreadCount: number;
 	isTyping: Record<string, boolean>;
-	setConversations: (c: Conversation[]) => void;
+	setConversations: (
+		c: Conversation[] | ((prev: Conversation[]) => Conversation[]),
+	) => void;
 	setActiveConversation: (id: string) => void;
-	addMessage: (msg: Message) => void;
-	setMessage: (convId: string, msgs: Message[]) => void;
+	addMessage: (msg: ChatMessage) => void;
+	setMessage: (convId: string, msgs: ChatMessage[]) => void;
 	setTyping: (convId: string, val: boolean) => void;
 	incrementUnread: () => void;
 	resetUnread: () => void;
@@ -49,24 +29,33 @@ const useChatStore = create<ChatState>((set) => ({
 	unreadCount: 0,
 	isTyping: {},
 
-	setConversations: (conversations) => set({ conversations }),
+	setConversations: (conversations) =>
+		set((state) => ({
+			conversations:
+				typeof conversations === 'function' ?
+					conversations(state.conversations)
+				:	conversations,
+		})),
 	setActiveConversation: (id) => set({ activeConversationId: id }),
 
 	addMessage: (msg) =>
-		set((state) => ({
-			messages: {
-				...state.messages,
-				[msg.conversationId]: [
-					...(state.messages[msg.conversationId] || []),
-					msg,
-				],
-			},
-			conversations: state.conversations.map((c) =>
-				c.id === msg.conversationId ?
-					{ ...c, messages: [...(c.messages || []), msg] }
-				:	c,
-			),
-		})),
+		set((state) => {
+			const existingMessages = state.messages[msg.conversationId] || [];
+			if (existingMessages.some((m) => m.id === msg.id)) {
+				return state;
+			}
+			return {
+				messages: {
+					...state.messages,
+					[msg.conversationId]: [...existingMessages, msg],
+				},
+				conversations: state.conversations.map((c) =>
+					c.id === msg.conversationId ?
+						{ ...c, messages: [...(c.messages || []), msg] }
+					:	c,
+				),
+			};
+		}),
 
 	setMessage: (convId, msgs) =>
 		set((state) => ({

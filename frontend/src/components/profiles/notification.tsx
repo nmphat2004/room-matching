@@ -8,11 +8,13 @@ import {
 import { useNotificationStore } from '@/stores/notification.store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, CheckCheck, Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
 
 const Notification = () => {
+	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { chatUnreadCount, setUnreadSummary } = useNotificationStore();
 	const [localPreferences, setLocalPreferences] = useState<{
@@ -157,13 +159,19 @@ const Notification = () => {
 					<div className='text-sm text-muted-foreground'>
 						Chưa có thông báo nào
 					</div>
-				:	notifications.map((item) => (
+				:	notifications
+						.filter((item) => item.type !== 'MESSAGE')
+						.map((item) => (
 						<button
 							type='button'
 							key={item.id}
 							onClick={() => {
 								if (!item.isRead) {
 									markReadMutation.mutate(item.id);
+								}
+								// Always navigate to link if available
+								if (item.link) {
+									router.push(item.link);
 								}
 							}}
 							className={`w-full text-left p-3 rounded-lg border transition-colors ${item.isRead ? 'bg-card' : 'bg-primary/5 border-primary/30'}`}>

@@ -1,4 +1,5 @@
-﻿'use client';
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+'use client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,12 +10,13 @@ import { Check, GripVertical, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
 import { createRoom } from '@/lib/api/room.api';
 import { uploadImage } from '@/lib/api/upload.api';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const roomSchema = z.object({
 	title: z.string().min(5, 'Tiêu đề phải từ 5 ký tự trở lên'),
@@ -36,6 +38,7 @@ type RoomFormData = z.infer<typeof roomSchema>;
 
 const PostRoomPage = () => {
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const [currentStep, setCurrentStep] = useState(1);
 	const [isLoading, setIsLoading] = useState(false);
 	const [uploadedImages, setUploadedImages] = useState<
@@ -50,7 +53,7 @@ const PostRoomPage = () => {
 		setValue,
 		getValues,
 	} = useForm<RoomFormData>({
-		resolver: zodResolver(roomSchema),
+		resolver: zodResolver(roomSchema) as Resolver<RoomFormData>,
 		mode: 'onBlur',
 	});
 
@@ -65,9 +68,12 @@ const PostRoomPage = () => {
 
 	const roomTypes = [
 		{ value: 'room', label: 'Phòng trọ', icon: '🏠' },
-		{ value: 'house', label: 'Nhà nguyên căn', icon: '🏡' },
-		{ value: 'apartment', label: 'Chung cư mini', icon: '🏢' },
-		{ value: 'dorm', label: 'Ký túc xá', icon: '🎓' },
+		{ value: 'house', label: 'Nhà riêng', icon: '🏡' },
+		{ value: 'shared', label: 'Ở ghép', icon: '👥' },
+		{ value: 'shophouse', label: 'Mặt bằng', icon: '🏪' },
+		{ value: 'apartment', label: 'Căn hộ chung cư', icon: '🏢' },
+		{ value: 'mini', label: 'Căn hộ mini', icon: '🏘️' },
+		{ value: 'service', label: 'Căn hộ dịch vụ', icon: '🏗️' },
 	];
 
 	const amenitiesList = [
@@ -143,6 +149,8 @@ const PostRoomPage = () => {
 			};
 
 			await createRoom(roomData);
+			// Invalidate rooms cache to show the new room
+			await queryClient.invalidateQueries({ queryKey: ['rooms'] });
 			toast.success('Tin đăng đã được tạo thành công!');
 			router.push('/rooms');
 		} catch (err: any) {

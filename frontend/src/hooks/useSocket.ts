@@ -4,7 +4,7 @@
 import { useAuthStore } from '@/stores/auth.store';
 import useChatStore from '@/stores/chat.store';
 import { useNotificationStore } from '@/stores/notification.store';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getUnreadSummary } from '@/lib/api/chat.api';
 
@@ -58,17 +58,20 @@ const useSocket = () => {
 		};
 	}, [accessToken, user?.id, addMessage, setTyping, setUnreadSummary]);
 
-	const joinConversation = (id: string) => {
+	const joinConversation = useCallback((id: string) => {
 		socketInstance?.emit('join_conversation', id);
-	};
+	}, []);
 
-	const sendMessage = (conversationId: string, content: string) => {
-		socketInstance?.emit('send_message', { conversationId, content });
-	};
+	const sendMessage = useCallback(
+		(conversationId: string, content: string) => {
+			socketInstance?.emit('send_message', { conversationId, content });
+		},
+		[],
+	);
 
-	const sendTyping = (conversationId: string) => {
+	const sendTyping = useCallback((conversationId: string) => {
 		socketInstance?.emit('typing', conversationId);
-	};
+	}, []);
 
 	return { joinConversation, sendMessage, sendTyping };
 };

@@ -26,13 +26,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // ─── Constants ───────────────────────────────────────────────
 
 const roomTypesList = [
-	{ value: 'Phòng trọ', label: 'Phòng trọ', icon: Home },
-	{ value: 'Nhà riêng', label: 'Nhà riêng', icon: Hotel },
-	{ value: 'Ở ghép', label: 'Ở ghép', icon: Users },
-	{ value: 'Mặt bằng', label: 'Mặt bằng', icon: Store },
-	{ value: 'Căn hộ chung cư', label: 'Căn hộ chung cư', icon: Building2 },
-	{ value: 'Chung cư mini', label: 'Căn hộ mini', icon: Building },
-	{ value: 'Căn hộ dịch vụ', label: 'Căn hộ dịch vụ', icon: Building2 },
+	{ value: 'room', label: 'Phòng trọ', icon: Home },
+	{ value: 'house', label: 'Nhà riêng', icon: Hotel },
+	{ value: 'shared', label: 'Ở ghép', icon: Users },
+	{ value: 'shophouse', label: 'Mặt bằng', icon: Store },
+	{ value: 'apartment', label: 'Căn hộ chung cư', icon: Building2 },
+	{ value: 'mini', label: 'Căn hộ mini', icon: Building },
+	{ value: 'service', label: 'Căn hộ dịch vụ', icon: Building2 },
 ];
 
 const amenitiesList = [
@@ -80,7 +80,7 @@ const RoomsPage = () => {
 		Number(searchParams.get('minArea')) || 0,
 	);
 	const [maxArea, setMaxArea] = useState(
-		Number(searchParams.get('maxArea')) || 100,
+		Number(searchParams.get('maxArea')) || 1000,
 	);
 	const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest');
 	const [selectedDistrict, setSelectedDistrict] = useState(
@@ -127,7 +127,7 @@ const RoomsPage = () => {
 		!!selectedRoomType ||
 		!!(minPrice || maxPrice) ||
 		minArea !== 0 ||
-		maxArea !== 100 ||
+		maxArea !== 1000 ||
 		selectedDistrict !== 'all' ||
 		selectedAmenities.length > 0;
 
@@ -166,7 +166,7 @@ const RoomsPage = () => {
 	const handleAreaSelect = (range: { min: number; max: number }) => {
 		if (minArea === range.min && maxArea === range.max) {
 			setMinArea(0);
-			setMaxArea(100);
+			setMaxArea(1000);
 			updateUrl({ minArea: '', maxArea: '' });
 		} else {
 			setMinArea(range.min);
@@ -207,7 +207,7 @@ const RoomsPage = () => {
 		setMinPrice('');
 		setMaxPrice('');
 		setMinArea(0);
-		setMaxArea(100);
+		setMaxArea(1000);
 		setSelectedDistrict('all');
 		setSelectedAmenities([]);
 		setSelectedRoomType('');
@@ -247,7 +247,7 @@ const RoomsPage = () => {
 					:	undefined,
 				roomType: selectedRoomType || undefined,
 				minArea: minArea ? Number(minArea) : undefined,
-				maxArea: maxArea ? Number(maxArea) : undefined,
+				maxArea: maxArea === 1000 ? undefined : Number(maxArea),
 				sortBy,
 				page,
 				limit: 12,
@@ -309,7 +309,7 @@ const RoomsPage = () => {
 						<button
 							onClick={() => toggleFilter('area')}
 							className={filterBtnClass(
-								minArea !== 0 || maxArea !== 100,
+								minArea !== 0 || maxArea !== 1000,
 								openFilter === 'area',
 							)}>
 							{getActiveAreaLabel() || 'Diện tích'}
@@ -537,7 +537,7 @@ const RoomsPage = () => {
 									active
 									onRemove={() => {
 										setMinArea(0);
-										setMaxArea(100);
+										setMaxArea(1000);
 										setPage(1);
 										updateUrl({
 											minArea: '',

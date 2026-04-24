@@ -10,11 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getReviews } from '@/lib/api/review.api';
 import { getRoomById } from '@/lib/api/room.api';
-import {
-	getSavedRoomStatus,
-	saveRoom,
-	unsaveRoom,
-} from '@/lib/api/user.api';
+import { getSavedRoomStatus, saveRoom, unsaveRoom } from '@/lib/api/user.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, Heart, MapPin, MessageCircle, Phone, Share2 } from 'lucide-react';
@@ -423,7 +419,7 @@ const RoomDetailPage = () => {
 										</div>
 									</div>
 
-									<Link href='/chat' className='block'>
+									<Link href={`/chat?roomId=${room.id}`} className='block'>
 										<Button
 											variant='default'
 											className='w-full h-12 rounded-lg text-sm font-bold hover:bg-primary/90 transition-all'>
@@ -443,15 +439,15 @@ const RoomDetailPage = () => {
 										<Button
 											variant='ghost'
 											className={`h-12 rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
-										disabled={isSaving}
-										onClick={() => {
-											if (!user) {
-												toast.error('Vui lòng đăng nhập để lưu phòng');
-												router.push('/login');
-												return;
-											}
-											toggleSavedRoom(saved);
-										}}>
+											disabled={isSaving}
+											onClick={() => {
+												if (!user) {
+													toast.error('Vui lòng đăng nhập để lưu phòng');
+													router.push('/login');
+													return;
+												}
+												toggleSavedRoom(saved);
+											}}>
 											<Heart
 												className={`w-4 h-4 mr-2 ${saved ? 'fill-red-500 text-red-500 animate-pulse' : ''}`}
 											/>

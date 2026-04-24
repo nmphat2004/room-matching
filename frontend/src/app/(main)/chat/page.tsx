@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Send, MoreVertical, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,7 +15,7 @@ import {
 	markConversationRead,
 	getUnreadSummary,
 } from '@/lib/api/chat.api';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
 import useChatStore from '@/stores/chat.store';
 import useSocket from '@/hooks/useSocket';
@@ -27,8 +27,11 @@ const MessagingPage = () => {
 	const { user } = useAuthStore();
 	const searchParams = useSearchParams();
 	const roomId = searchParams.get('roomId');
+	const conversationId = searchParams.get('conversationId');
+	const queryClient = useQueryClient();
 	const { joinConversation, sendMessage } = useSocket();
 	const { setUnreadSummary } = useNotificationStore();
+	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const {
 		conversations: storeConversations,
 		setConversations,
@@ -43,16 +46,17 @@ const MessagingPage = () => {
 	const [filterTab, setFilterTab] = useState('all');
 	const [searchText, setSearchText] = useState('');
 
-	const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
-		queryKey: ['chat-conversations'],
-		queryFn: getConversations,
-	});
+	const { data: conversations = [], isLoading: isLoadingConversations } =
+		useQuery({
+			queryKey: ['chat-conversations'],
+			queryFn: getConversations,
+		});
 
 	const { mutate: createConversation, isPending: isCreatingConversation } =
 		useMutation({
 			mutationFn: (id: string) => getOrCreateConversation(id),
 			onSuccess: (conversation) => {
-				setConversations([conversation, ...storeConversations]);
+				setConversations((current) => [conversation, ...current]);
 				setActiveConversation(conversation.id);
 			},
 			onError: () => {
@@ -60,19 +64,29 @@ const MessagingPage = () => {
 			},
 		});
 
-	const { data: conversationMessages, isLoading: isLoadingMessages } = useQuery({
+	const {
+		data: conversationMessages,
+		isLoading: isLoadingMessages,
+		refetch: refetchMessages,
+	} = useQuery({
 		queryKey: ['chat-messages', activeConversationId],
-		queryFn: () => getMessages(activeConversationId as string, { page: 1, limit: 50 }),
+		queryFn: () =>
+			getMessages(activeConversationId as string, { page: 1, limit: 50 }),
 		enabled: Boolean(activeConversationId),
 	});
 
 	useEffect(() => {
 		if (!conversations.length) return;
 		setConversations(conversations);
-		if (!activeConversationId) {
+		if (!activeConversationId && conversations[0]) {
 			setActiveConversation(conversations[0].id);
 		}
-	}, [conversations, activeConversationId, setActiveConversation, setConversations]);
+	}, [
+		conversations,
+		activeConversationId,
+		setActiveConversation,
+		setConversations,
+	]);
 
 	useEffect(() => {
 		if (!conversationMessages || !activeConversationId) return;
@@ -87,33 +101,64 @@ const MessagingPage = () => {
 			return;
 		}
 		createConversation(roomId);
-	}, [roomId, user, createConversation, setActiveConversation, storeConversations]);
+	}, [
+		roomId,
+		user,
+		createConversation,
+		setActiveConversation,
+		storeConversations,
+	]);
+
+	// Handle direct conversation navigation from notification
+	useEffect(() => {
+		if (!conversationId || !user) return;
+		setActiveConversation(conversationId as string);
+	}, [conversationId, user, setActiveConversation]);
 
 	useEffect(() => {
 		if (activeConversationId) {
 			joinConversation(activeConversationId);
+			refetchMessages();
 		}
-	}, [activeConversationId, joinConversation]);
+	}, [activeConversationId, joinConversation, refetchMessages]);
 
 	const conversationList = useMemo(() => {
-		const normalized = storeConversations.map((conversation) => {
-			const partner =
-				conversation.owner.id === user?.id ? conversation.renter : conversation.owner;
-			const lastMessage = conversation.messages?.[0];
-			const unread = lastMessage?.senderId !== user?.id ? 1 : 0;
-			return {
-				id: conversation.id,
-				roomId: conversation.roomId,
-				roomName: conversation.room.title,
-				roomPrice: conversation.room.price,
-				roomImage: conversation.room.images?.[0]?.url,
-				avatar: partner.avatarUrl,
-				name: partner.fullName,
-				lastMessage: lastMessage?.content || 'Bắt đầu cuộc trò chuyện',
-				timestamp: lastMessage?.sentAt || '',
-				unread: conversation.unreadCount ?? unread,
-			};
-		});
+		if (!storeConversations || storeConversations.length === 0) {
+			return [];
+		}
+
+		const normalized = storeConversations
+			.filter((conversation) => conversation?.owner && conversation?.renter)
+			.map((conversation) => {
+				const partner =
+					conversation.owner.id === user?.id ?
+						conversation.renter
+					:	conversation.owner;
+				const lastMessage = conversation.messages?.[0];
+					const unread =
+						(
+							lastMessage &&
+							lastMessage.senderId !== user?.id &&
+							(conversation.unreadCount === undefined ||
+								conversation.unreadCount > 0)
+						) ?
+							1
+						:	0;
+					return {
+						id: conversation.id,
+						roomId: conversation.roomId,
+						roomName: conversation.room?.title || 'Phòng',
+						roomPrice: conversation.room?.price || 0,
+						roomImage: conversation.room?.images?.[0]?.url,
+						avatar: partner?.avatarUrl || '',
+						name: partner?.fullName || 'Người dùng',
+						lastMessage: lastMessage?.content || 'Bắt đầu cuộc trò chuyện',
+						timestamp: lastMessage?.sentAt || '',
+						unread:
+							conversation.id === activeConversationId ? 0
+							: conversation.unreadCount ?? unread,
+					};
+			});
 
 		const byFilter = normalized.filter((item) =>
 			filterTab === 'unread' ? item.unread > 0 : true,
@@ -126,29 +171,23 @@ const MessagingPage = () => {
 				item.name.toLowerCase().includes(keyword) ||
 				item.roomName.toLowerCase().includes(keyword),
 		);
-	}, [storeConversations, user?.id, filterTab, searchText]);
+	}, [storeConversations, user?.id, filterTab, searchText, activeConversationId]);
 
 	const currentConversation = conversationList.find(
 		(item) => item.id === activeConversationId,
 	);
-	const currentMessages =
-		(activeConversationId && messages[activeConversationId]) || [];
+	const currentMessages = useMemo(() => {
+		return (activeConversationId && messages[activeConversationId]) || [];
+	}, [activeConversationId, messages]);
+
+	useEffect(() => {
+		messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+	}, [currentMessages]);
 
 	const handleSendMessage = () => {
 		if (!activeConversationId || !messageInput.trim()) return;
 		sendMessage(activeConversationId, messageInput.trim());
-		addMessage({
-			id: `tmp-${Date.now()}`,
-			conversationId: activeConversationId,
-			senderId: user?.id || '',
-			content: messageInput.trim(),
-			sentAt: new Date().toISOString(),
-			sender: {
-				id: user?.id || '',
-				fullName: user?.fullName || 'You',
-				avatarUrl: user?.avatarUrl,
-			},
-		});
+		// Don't add temp message - let server response handle it to avoid duplicates
 		setMessageInput('');
 	};
 
@@ -203,13 +242,23 @@ const MessagingPage = () => {
 								<div className='h-full flex items-center justify-center px-4 text-center text-sm text-muted-foreground'>
 									Bạn chưa có cuộc trò chuyện nào
 								</div>
-							: conversationList.map((conversation) => (
+							:	conversationList.map((conversation) => (
 									<button
 										key={conversation.id}
 										onClick={async () => {
 											setActiveConversation(conversation.id);
 											try {
 												await markConversationRead(conversation.id);
+												setConversations((current) =>
+													current.map((conv) =>
+														conv.id === conversation.id ?
+															{ ...conv, unreadCount: 0 }
+														:	conv,
+													),
+												);
+												await queryClient.invalidateQueries({
+													queryKey: ['chat-conversations'],
+												});
 												const summary = await getUnreadSummary();
 												setUnreadSummary({
 													chatUnreadCount: summary.chatUnreadCount,
@@ -308,7 +357,10 @@ const MessagingPage = () => {
 									/>
 									<div className='flex-1'>
 										<p className='mb-1'>{currentConversation.roomName}</p>
-										<PriceTag amount={currentConversation.roomPrice} size='sm' />
+										<PriceTag
+											amount={currentConversation.roomPrice}
+											size='sm'
+										/>
 									</div>
 									<Button variant='secondary' className='shrink-0'>
 										Xem tin
@@ -326,38 +378,44 @@ const MessagingPage = () => {
 									<div className='h-full flex items-center justify-center text-sm text-muted-foreground'>
 										Chưa có tin nhắn, hãy bắt đầu cuộc trò chuyện
 									</div>
-								: currentMessages.map((message, index) => {
-									const showTimestamp =
-										index === 0 ||
-										currentMessages[index - 1].sentAt !== message.sentAt;
+								:	<>
+										{currentMessages.map((message, index) => {
+											const showTimestamp =
+												index === 0 ||
+												currentMessages[index - 1].sentAt !== message.sentAt;
 
-									return (
-										<div key={message.id}>
-											{showTimestamp && (
-												<div className='flex justify-center mb-4'>
-													<span className='text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full'>
-														{new Date(message.sentAt).toLocaleString('vi-VN')}
-													</span>
+											return (
+												<div key={message.id}>
+													{showTimestamp && (
+														<div className='flex justify-center mb-4'>
+															<span className='text-xs text-muted-foreground bg-secondary px-3 py-1 rounded-full'>
+																{new Date(message.sentAt).toLocaleString(
+																	'vi-VN',
+																)}
+															</span>
+														</div>
+													)}
+													<div
+														className={`flex ${
+															message.senderId === user?.id ?
+																'justify-end'
+															:	'justify-start'
+														}`}>
+														<div
+															className={`max-w-[70%] px-4 py-2.5 rounded-2xl ${
+																message.senderId === user?.id ?
+																	'bg-primary text-white rounded-br-sm'
+																:	'bg-secondary text-foreground rounded-bl-sm'
+															}`}>
+															<p>{message.content}</p>
+														</div>
+													</div>
 												</div>
-											)}
-											<div
-												className={`flex ${
-													message.senderId === user?.id ?
-														'justify-end'
-													:	'justify-start'
-												}`}>
-												<div
-													className={`max-w-[70%] px-4 py-2.5 rounded-2xl ${
-														message.senderId === user?.id ?
-															'bg-primary text-white rounded-br-sm'
-														:	'bg-secondary text-foreground rounded-bl-sm'
-													}`}>
-													<p>{message.content}</p>
-												</div>
-											</div>
-										</div>
-									);
-								})}
+											);
+										})}
+										<div ref={messagesEndRef} />
+									</>
+								}
 							</div>
 
 							{/* Message Input */}
