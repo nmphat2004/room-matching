@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { PaginatedResponse, Room } from '@/types';
+import { Amenity, PaginatedResponse, Room } from '@/types';
 import api from '../axios';
 
 export interface SearchRoomParams {
@@ -22,6 +22,11 @@ export const getRooms = async (params: SearchRoomParams) => {
 	return res.data;
 };
 
+export const getAmenities = async () => {
+	const res = await api.get<Amenity[]>('/rooms/amenities');
+	return res.data;
+};
+
 export const getRoomById = async (id: string) => {
 	const res = await api.get<Room>(`/rooms/${id}`);
 	return res.data;
@@ -34,5 +39,15 @@ export const createRoom = async (data: any) => {
 
 export const getMyRoom = async () => {
 	const res = await api.get<Room[]>('/rooms/my-rooms');
+	return res.data;
+};
+
+export const updateRoom = async (id: string, data: any) => {
+	const res = await api.put<Room>(`/rooms/${id}`, data);
+	return res.data;
+};
+
+export const deleteRoom = async (id: string) => {
+	const res = await api.delete<{ message: string }>(`/rooms/${id}`);
 	return res.data;
 };

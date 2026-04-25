@@ -141,7 +141,7 @@ model Conversation {
   ownerId   String
   createdAt DateTime @default(now())
 
-  room     Room      @relation(fields: [roomId], references: [id])
+  room     Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
   renter   User      @relation("RenterConversations", fields: [renterId], references: [id])
   owner    User      @relation("OwnerConversations", fields: [ownerId], references: [id])
   messages Message[]
@@ -172,7 +172,7 @@ model Report {
   status     String   @default("pending")
   createdAt  DateTime @default(now())
 
-  room     Room @relation(fields: [roomId], references: [id])
+  room     Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   reporter User @relation(fields: [reporterId], references: [id])
 
   @@map("reports")
@@ -184,7 +184,7 @@ model SavedRoom {
   savedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
-  room Room @relation(fields: [roomId], references: [id])
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@id([userId, roomId])
   @@map("saved_rooms")

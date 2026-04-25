@@ -6,18 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Check, GripVertical, Upload, X } from 'lucide-react';
+import { Check, GripVertical, Loader2, Upload, X } from 'lucide-react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useLayoutEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
-import { createRoom } from '@/lib/api/room.api';
+import { getAmenities, getRoomById, updateRoom } from '@/lib/api/room.api';
 import { uploadImage } from '@/lib/api/upload.api';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
+import { Amenity } from '@/types';
 
 const roomSchema = z.object({
 	title: z.string().min(5, 'Tiêu đề phải từ 5 ký tự trở lên'),
@@ -37,22 +38,22 @@ const roomSchema = z.object({
 
 type RoomFormData = z.infer<typeof roomSchema>;
 
-const PostRoomPage = () => {
+const EditRoomPage = () => {
+	const params = useParams();
+	const roomId = params.id as string;
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { user, isLoading: authLoading } = useAuthStore();
 	const [currentStep, setCurrentStep] = useState(1);
-	const [isLoading, setIsLoading] = useState(false);
+	const [isUpdating, setIsUpdating] = useState(false);
 	const [uploadedImages, setUploadedImages] = useState<
-		{ file: File; preview: string }[]
+		{ file?: File; preview: string; isNew: boolean }[]
 	>([]);
 
-	useLayoutEffect(() => {
-		if (!authLoading && user?.role !== 'LANDLORD') {
-			toast.error('Bạn cần có tài khoản Chủ trọ để truy cập trang này!');
-			router.push('/');
-		}
-	}, [user, authLoading, router]);
+	const { data: room, isLoading: isLoadingRoom } = useQuery({
+		queryKey: ['room', roomId],
+		queryFn: () => getRoomById(roomId),
+	});
 
 	const {
 		register,
@@ -61,18 +62,54 @@ const PostRoomPage = () => {
 		formState: { errors },
 		setValue,
 		getValues,
+		reset,
 	} = useForm<RoomFormData>({
 		resolver: zodResolver(roomSchema) as Resolver<RoomFormData>,
 		mode: 'onBlur',
 	});
 
+	useEffect(() => {
+		if (room) {
+			reset({
+				title: room.title,
+				roomType: room.type,
+				address: room.address,
+				price: Number(room.price),
+				area: room.area || 0,
+				floor: room.floor || 0,
+				description: room.description || '',
+				amenities: room.amenities?.map((a: any) => a.amenity.value) || [],
+				rules: room.rule || '',
+				electricityCost: Number(room.electricityCost) || 0,
+				waterCost: Number(room.waterCost) || 0,
+				deposit: Number(room.deposit) || 0,
+				minStay: room.minStay || '1 tháng',
+			});
+			if (room.images) {
+				setUploadedImages(
+					room.images.map((img: any) => ({
+						preview: img.url,
+						isNew: false,
+					})),
+				);
+			}
+		}
+	}, [room, reset]);
+
 	const formData = watch();
+
+	useLayoutEffect(() => {
+		if (!authLoading && user?.role !== 'LANDLORD') {
+			toast.error('Bạn cần có tài khoản Chủ trọ để truy cập trang này!');
+			router.push('/');
+		}
+	}, [user, authLoading, router]);
 
 	const steps = [
 		{ number: 1, title: 'Thông tin cơ bản' },
 		{ number: 2, title: 'Mô tả & Tiện nghi' },
 		{ number: 3, title: 'Hình ảnh' },
-		{ number: 4, title: 'Xem trước & Đăng' },
+		{ number: 4, title: 'Xem trước & Cập nhật' },
 	];
 
 	const roomTypes = [
@@ -114,6 +151,7 @@ const PostRoomPage = () => {
 			const newImages = Array.from(files).map((file) => ({
 				file,
 				preview: URL.createObjectURL(file),
+				isNew: true,
 			}));
 			setUploadedImages([...uploadedImages, ...newImages]);
 		}
@@ -123,9 +161,14 @@ const PostRoomPage = () => {
 		setUploadedImages(uploadedImages.filter((_, i) => i !== index));
 	};
 
+	const { data: amenitiesData = [] } = useQuery({
+		queryKey: ['amenities'],
+		queryFn: getAmenities,
+	});
+
 	const onSubmit = async (data: RoomFormData) => {
 		try {
-			setIsLoading(true);
+			setIsUpdating(true);
 
 			if (uploadedImages.length < 3) {
 				toast.error('Vui lòng tải lên ít nhất 3 hình ảnh');
@@ -135,9 +178,18 @@ const PostRoomPage = () => {
 
 			const imageUrls: string[] = [];
 			for (const image of uploadedImages) {
-				const url = await uploadImage(image.file);
-				imageUrls.push(url);
+				if (image.isNew && image.file) {
+					const url = await uploadImage(image.file);
+					imageUrls.push(url);
+				} else {
+					imageUrls.push(image.preview);
+				}
 			}
+
+			// Map selection values to IDs
+			const selectedAmenityIds = data.amenities
+				.map((val) => amenitiesData.find((a: Amenity) => a.value === val)?.id)
+				.filter(Boolean) as string[];
 
 			const roomData = {
 				title: data.title,
@@ -154,20 +206,20 @@ const PostRoomPage = () => {
 				floor: data.floor || 0,
 				imageUrls,
 				primaryImageUrl: imageUrls[0],
-				amenityIds: [],
+				amenityIds: selectedAmenityIds,
 			};
 
-			await createRoom(roomData);
-			// Invalidate rooms cache to show the new room
-			await queryClient.invalidateQueries({ queryKey: ['rooms'] });
-			toast.success('Tin đăng đã được tạo thành công!');
-			router.push('/rooms');
+			await updateRoom(roomId, roomData);
+			await queryClient.invalidateQueries({ queryKey: ['dashboard-my-rooms'] });
+			await queryClient.invalidateQueries({ queryKey: ['room', roomId] });
+			toast.success('Tin đăng đã được cập nhật thành công!');
+			router.push('/dashboard');
 		} catch (err: any) {
 			const errorMessage =
 				err.response?.data?.message || err.message || 'Có lỗi xảy ra';
 			toast.error(errorMessage);
 		} finally {
-			setIsLoading(false);
+			setIsUpdating(false);
 		}
 	};
 
@@ -189,20 +241,27 @@ const PostRoomPage = () => {
 		}
 	};
 
-	if (authLoading) {
+	if (authLoading || isLoadingRoom) {
 		return (
 			<div className='min-h-screen flex items-center justify-center bg-background'>
 				<div className='flex flex-col items-center gap-4'>
-					<div className='w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin'></div>
+					<Loader2 className='w-12 h-12 border-primary animate-spin' />
 					<p className='text-muted-foreground animate-pulse'>
-						Đang xác thực quyền truy cập...
+						Đang tải thông tin phòng...
 					</p>
 				</div>
 			</div>
 		);
 	}
 
-	if (!user || user.role !== 'LANDLORD') {
+	if (!user || user.role !== 'LANDLORD' || (room && room.ownerId !== user?.id)) {
+		if (room && room.ownerId !== user?.id) {
+			return (
+				<div className='min-h-screen flex items-center justify-center'>
+					<p>Bạn không có quyền chỉnh sửa tin đăng này.</p>
+				</div>
+			);
+		}
 		return null;
 	}
 
@@ -448,7 +507,7 @@ const PostRoomPage = () => {
 									{uploadedImages.length > 0 && (
 										<div>
 											<div className='flex items-center justify-between mb-3'>
-												<label>Đã tải lên {uploadedImages.length} ảnh</label>
+												<label>Đã có {uploadedImages.length} ảnh</label>
 												<p className='text-sm text-muted-foreground'>
 													Kéo để sắp xếp
 												</p>
@@ -493,7 +552,7 @@ const PostRoomPage = () => {
 
 							{currentStep === 4 && (
 								<div className='space-y-6'>
-									<h2 className='text-2xl font-bold'>Xem trước tin đăng</h2>
+									<h2 className='text-2xl font-bold'>Xem trước cập nhật</h2>
 
 									<div className='bg-secondary rounded-xl p-6 space-y-4'>
 										<div>
@@ -591,11 +650,11 @@ const PostRoomPage = () => {
 										<div className='text-blue-600 mt-0.5'>ℹ️</div>
 										<div className='flex-1 text-sm'>
 											<p className='mb-1'>
-												Tin đăng của bạn sẽ được kiểm duyệt trong vòng 24 giờ.
+												Các thay đổi sẽ được cập nhật ngay lập tức.
 											</p>
 											<p className='text-muted-foreground'>
-												Đảm bảo thông tin chính xác để tăng cơ hội được duyệt
-												nhanh.
+												Đảm bảo thông tin chính xác để giữ uy tín cho tin đăng
+												của bạn.
 											</p>
 										</div>
 									</div>
@@ -621,9 +680,9 @@ const PostRoomPage = () => {
 									</Button>
 								:	<Button
 										type='submit'
-										disabled={isLoading}
+										disabled={isUpdating}
 										className='bg-accent hover:bg-accent/90'>
-										{isLoading ? 'Đang đăng...' : 'Đăng tin'}
+										{isUpdating ? 'Đang cập nhật...' : 'Cập nhật tin'}
 									</Button>
 								}
 							</div>
@@ -631,48 +690,19 @@ const PostRoomPage = () => {
 
 						<div className='lg:col-span-1'>
 							<div className='sticky top-24 bg-card border border-border rounded-xl p-6'>
-								<h3 className='mb-4'>💡 Mẹo đăng tin hiệu quả</h3>
+								<h3 className='mb-4'>💡 Mẹo chỉnh sửa</h3>
 								<ul className='space-y-3 text-sm text-muted-foreground'>
-									{currentStep === 1 && (
-										<>
-											<li>✓ Điền đầy đủ thông tin địa chỉ</li>
-											<li>✓ Giá thuê phải chính xác</li>
-											<li>✓ Diện tích phòng thực tế</li>
-										</>
-									)}
-									{currentStep === 2 && (
-										<>
-											<li>✓ Mô tả chi tiết, rõ ràng</li>
-											<li>✓ Nêu rõ tiện ích xung quanh</li>
-											<li>✓ Quy định nhà rõ ràng</li>
-										</>
-									)}
-									{currentStep === 3 && (
-										<>
-											<li>✓ Tối thiểu 3 ảnh chất lượng</li>
-											<li>✓ Ảnh bìa nên là góc đẹp nhất</li>
-											<li>✓ Chụp nhiều góc khác nhau</li>
-										</>
-									)}
-									{currentStep === 4 && (
-										<>
-											<li>✓ Kiểm tra kỹ thông tin</li>
-											<li>✓ Đảm bảo số điện thoại chính xác</li>
-											<li>✓ Tin đăng sẽ được duyệt trong 24h</li>
-										</>
-									)}
+									<li>✓ Cập nhật giá thuê nếu có thay đổi</li>
+									<li>✓ Thêm ảnh mới nếu bạn vừa sửa sang lại phòng</li>
+									<li>✓ Mô tả rõ các tiện ích mới thêm vào</li>
+									<li>✓ Kiểm tra kỹ địa chỉ và số điện thoại</li>
 								</ul>
 
 								<Separator className='my-4' />
 
-								<div className='text-sm'>
-									<p className='mb-2 font-semibold'>Tin đăng mẫu:</p>
-									<div className='bg-secondary rounded-lg p-3'>
-										<p className='text-xs text-muted-foreground'>
-											&quot;Phòng trọ 25m² gần ĐH Bách Khoa, đầy đủ nội thất, an
-											ninh tốt. Giá 4.5tr/tháng.&quot;
-										</p>
-									</div>
+								<div className='text-sm font-medium text-primary'>
+									Việc cập nhật thông tin thường xuyên giúp tin đăng của bạn nổi
+									bật hơn.
 								</div>
 							</div>
 						</div>
@@ -683,4 +713,4 @@ const PostRoomPage = () => {
 	);
 };
 
-export default PostRoomPage;
+export default EditRoomPage;

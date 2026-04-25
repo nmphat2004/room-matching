@@ -287,7 +287,7 @@ export class ChatService {
     }
 
     const notificationUnreadCount = await this.prisma.notification.count({
-      where: { userId, isRead: false },
+      where: { userId, isRead: false, type: { not: 'NEW_MESSAGE' } },
     });
 
     return {

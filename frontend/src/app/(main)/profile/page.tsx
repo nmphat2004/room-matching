@@ -1,18 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import Personal from '@/components/profiles/personal';
 import Security from '@/components/profiles/security';
 import Notification from '@/components/profiles/notification';
 import SavedRooms from '@/components/profiles/saved-rooms';
 import { useSearchParams } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth.store';
+import { useRouter } from 'next/navigation';
 
 type Tab = 'personal' | 'security' | 'notifications' | 'saved';
 
 const ProfilePage = () => {
+	const router = useRouter();
 	const searchParams = useSearchParams();
 	const defaultTab = (searchParams.get('tab') as Tab) || 'personal';
 	const [activeTab, setActiveTab] = useState<Tab>(defaultTab);
+	const { user, isLoading } = useAuthStore();
 
 	const tabs = [
 		{ id: 'personal' as Tab, label: 'Thông tin cá nhân' },
@@ -20,6 +24,14 @@ const ProfilePage = () => {
 		{ id: 'notifications' as Tab, label: 'Thông báo' },
 		{ id: 'saved' as Tab, label: 'Phòng đã lưu' },
 	];
+
+	useEffect(() => {
+		if (!isLoading && !user) {
+			router.push('/login');
+		}
+	}, [user, isLoading, router]);
+
+	if (isLoading || !user) return null;
 
 	return (
 		<div className='min-h-screen bg-secondary'>

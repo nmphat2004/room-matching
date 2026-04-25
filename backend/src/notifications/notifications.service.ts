@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { PrismaService } from 'src/prisma/prisma.service';
 import { Injectable } from '@nestjs/common';
 
@@ -30,7 +25,7 @@ export class NotificationsService {
 
   async getUnreadCount(userId: string) {
     const unread = await this.prisma.notification.count({
-      where: { userId, isRead: false },
+      where: { userId, isRead: false, type: { not: 'NEW_MESSAGE' } },
     });
     return { unread };
   }

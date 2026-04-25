@@ -160,7 +160,7 @@ const Notification = () => {
 						Chưa có thông báo nào
 					</div>
 				:	notifications
-						.filter((item) => item.type !== 'MESSAGE')
+						.filter((item) => item.type !== 'NEW_MESSAGE')
 						.map((item) => (
 						<button
 							type='button'

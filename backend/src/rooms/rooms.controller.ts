@@ -36,6 +36,12 @@ export class RoomsController {
     return this.roomsService.findByOwner(req.user.id);
   }
 
+  @Get('amenities')
+  @ApiOperation({ summary: 'Get all available amenities' })
+  findAllAmenities() {
+    return this.roomsService.findAllAmenities();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get room detail' })
   findOne(@Param('id') id: string) {

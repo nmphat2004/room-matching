@@ -1,20 +1,39 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ListPlus, MessageSquare, Eye, Star, Loader2 } from 'lucide-react';
+import {
+	ListPlus,
+	MessageSquare,
+	Eye,
+	Star,
+	Loader2,
+	MoreVertical,
+	Pencil,
+	Trash2,
+	EyeOff,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import Image from 'next/image';
 import { useAuthStore } from '@/stores/auth.store';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { getMyRoom } from '@/lib/api/room.api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { deleteRoom, getMyRoom, updateRoom } from '@/lib/api/room.api';
 import { getConversations } from '@/lib/api/chat.api';
 import { PriceTag } from '@/components/room/price-tag';
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 const DashboardPage = () => {
 	const { user, isLoading } = useAuthStore();
 	const router = useRouter();
+	const queryClient = useQueryClient();
 	const [filterStatus, setFilterStatus] = useState('all');
 
 	useEffect(() => {
@@ -22,6 +41,31 @@ const DashboardPage = () => {
 			router.replace('/');
 		}
 	}, [isLoading, user, router]);
+
+	const toggleStatusMutation = useMutation({
+		mutationFn: ({ id, status }: { id: string; status: string }) =>
+			updateRoom(id, { status }),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['dashboard-my-rooms'] });
+			toast.success('Đã cập nhật trạng thái tin đăng');
+		},
+		onError: () => toast.error('Không thể cập nhật trạng thái'),
+	});
+
+	const deleteMutation = useMutation({
+		mutationFn: deleteRoom,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ['dashboard-my-rooms'] });
+			toast.success('Đã xóa tin đăng');
+		},
+		onError: () => toast.error('Không thể xóa tin đăng'),
+	});
+
+	const handleDelete = (id: string, title: string) => {
+		if (confirm(`Bạn có chắc chắn muốn xóa tin đăng "${title}"?`)) {
+			deleteMutation.mutate(id);
+		}
+	};
 
 	const { data: myRooms = [], isLoading: isLoadingRooms } = useQuery({
 		queryKey: ['dashboard-my-rooms'],
@@ -198,9 +242,77 @@ const DashboardPage = () => {
 										</div>
 										<div className='flex items-center gap-3'>
 											{getStatusBadge(listing.status)}
-											<Link href={`/rooms/${listing.id}`}>
-												<Button variant='outline'>Xem tin</Button>
-											</Link>
+
+											<DropdownMenu>
+												<DropdownMenuTrigger
+													className={buttonVariants({
+														variant: 'ghost',
+														size: 'icon',
+													})}>
+													<MoreVertical className='w-4 h-4' />
+												</DropdownMenuTrigger>
+												<DropdownMenuContent align='end' className='w-48'>
+													<Link href={`/rooms/${listing.id}`}>
+														<DropdownMenuItem className='cursor-pointer'>
+															<Eye className='w-4 h-4 mr-2' />
+															Xem tin
+														</DropdownMenuItem>
+													</Link>
+													<Link href={`/post/${listing.id}`}>
+														<DropdownMenuItem className='cursor-pointer'>
+															<Pencil className='w-4 h-4 mr-2' />
+															Chỉnh sửa
+														</DropdownMenuItem>
+													</Link>
+													<DropdownMenuSeparator />
+													<DropdownMenuItem
+														className='cursor-pointer'
+														onClick={() =>
+															toggleStatusMutation.mutate({
+																id: listing.id,
+																status:
+																	listing.status === 'AVAILABLE' ?
+																		'HIDDEN'
+																	:	'AVAILABLE',
+															})
+														}>
+														{listing.status === 'AVAILABLE' ?
+															<>
+																<EyeOff className='w-4 h-4 mr-2' />
+																Ẩn tin
+															</>
+														:	<>
+																<Eye className='w-4 h-4 mr-2' />
+																Hiện tin
+															</>
+														}
+													</DropdownMenuItem>
+													<DropdownMenuItem
+														className='cursor-pointer'
+														onClick={() =>
+															toggleStatusMutation.mutate({
+																id: listing.id,
+																status: 'RENTED',
+															})
+														}
+														disabled={listing.status === 'RENTED'}>
+														<Badge
+															variant='secondary'
+															className='w-4 h-4 mr-2 p-0'
+														/>
+														Đánh dấu đã thuê
+													</DropdownMenuItem>
+													<DropdownMenuSeparator />
+													<DropdownMenuItem
+														className='text-red-500 cursor-pointer'
+														onClick={() =>
+															handleDelete(listing.id, listing.title)
+														}>
+														<Trash2 className='w-4 h-4 mr-2' />
+														Xóa tin
+													</DropdownMenuItem>
+												</DropdownMenuContent>
+											</DropdownMenu>
 										</div>
 									</div>
 								))}

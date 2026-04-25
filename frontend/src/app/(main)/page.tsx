@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { districts, priceRanges, roomTypesList } from '@/data/data';
 import { getRooms } from '@/lib/api/room.api';
+import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
 import {
 	Building,
@@ -15,12 +16,29 @@ import {
 	Search,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 const HomePage = () => {
 	const [searchDistrict, setSearchDistrict] = useState('');
 	const [priceRange, setPriceRange] = useState('');
 	const [roomType, setRoomType] = useState('');
+	const { user } = useAuthStore();
+	const router = useRouter();
+
+	const handlePostClick = (e: React.MouseEvent) => {
+		if (user?.role !== 'LANDLORD') {
+			e.preventDefault();
+			toast.error('Bạn cần có tài khoản Chủ trọ để đăng tin!', {
+				description: 'Vui lòng đăng nhập với vai trò Chủ trọ.',
+				action: {
+					label: 'Đăng nhập',
+					onClick: () => router.push('/login'),
+				},
+			});
+		}
+	};
 
 	const categories = [
 		{
@@ -234,7 +252,7 @@ const HomePage = () => {
 					<p className='mb-6 text-lg text-white'>
 						Đăng tin cho thuê phòng miễn phí và tiếp cận hàng nghìn người thuê
 					</p>
-					<Link href='/post'>
+					<Link href='/post' onClick={handlePostClick}>
 						<Button
 							variant='default'
 							size='lg'

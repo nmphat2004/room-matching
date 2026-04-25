@@ -22,6 +22,9 @@ export interface Room {
 	lng?: number;
 	area?: number;
 	floor?: number;
+	type: string;
+	rule?: string;
+	ownerId: string;
 	status: 'AVAILABLE' | 'RENTED' | 'HIDDEN';
 	avgRating: number;
 	reviewCount: number;

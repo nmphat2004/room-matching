@@ -255,4 +255,10 @@ export class RoomsService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  async findAllAmenities() {
+    return this.prisma.amenity.findMany({
+      orderBy: { name: 'asc' },
+    });
+  }
 }

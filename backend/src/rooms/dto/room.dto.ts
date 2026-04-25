@@ -109,9 +109,9 @@ export class CreateRoomDto {
 
 export class UpdateRoomDto {
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
@@ -124,42 +124,43 @@ export class UpdateRoomDto {
   description?: string;
 
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @Min(0)
   @Type(() => Number)
-  price: number;
+  price?: number;
 
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @Min(0)
   @Type(() => Number)
-  electricityCost: number;
+  electricityCost?: number;
 
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @Min(0)
   @Type(() => Number)
-  waterCost: number;
+  waterCost?: number;
 
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @Min(0)
   @Type(() => Number)
-  deposit: number;
+  deposit?: number;
 
-  @ApiProperty({ example: '3 tháng' })
-  @IsNotEmpty()
+  @ApiProperty({ example: '3 tháng', required: false })
+  @IsOptional()
   @IsString()
-  minStay: string;
+  minStay?: string;
 
-  @ApiProperty({ example: 'Không cho nuôi chó mèo' })
+  @ApiProperty({ example: 'Không cho nuôi chó mèo', required: false })
+  @IsOptional()
   @IsString()
-  rule: string;
+  rule?: string;
 
   @ApiProperty({ required: false })
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  address: string;
+  address?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()
