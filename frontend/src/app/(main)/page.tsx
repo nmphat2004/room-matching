@@ -1,5 +1,6 @@
 'use client';
 import RoomCard from '@/components/room/room-card';
+import RoomRecommendations from '@/components/room/room-recommendation';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -165,6 +166,10 @@ const HomePage = () => {
 						</Link>
 					</div>
 				</div>
+			</div>
+
+			<div className='container mx-auto px-4'>
+				<RoomRecommendations />
 			</div>
 
 			{/* Quick categories */}
