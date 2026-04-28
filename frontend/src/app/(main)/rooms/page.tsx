@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
+import SeasonalWidget from '@/components/analytics/seasonal-widget';
 import FilterChip from '@/components/room/filter-chip';
 import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
@@ -610,6 +611,10 @@ const RoomsPage = () => {
 						))}
 					</div>
 				}
+
+				<div className='mt-8'>
+					<SeasonalWidget />
+				</div>
 
 				{/* ── Pagination ──────────────────────────────── */}
 				{data && data?.meta.totalPages > 1 && (

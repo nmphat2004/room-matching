@@ -1,4 +1,5 @@
 'use client';
+import NeighborhoodWidget from '@/components/analytics/neighborhood-widget';
 import ReviewForm from '@/components/review/review-form';
 import AmenityIcon from '@/components/room/amenity-icon';
 import { PriceTag } from '@/components/room/price-tag';
@@ -427,6 +428,10 @@ const RoomDetailPage = () => {
 											NHẮN TIN NGAY
 										</Button>
 									</Link>
+
+									{room.lat && room.lng && (
+										<NeighborhoodWidget lat={room.lat} lng={room.lng} />
+									)}
 
 									<Button
 										variant='outline'

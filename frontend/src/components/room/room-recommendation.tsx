@@ -14,7 +14,7 @@ const RoomRecommendations = () => {
 			user ?
 				api.get('/recommendations').then((r) => r.data)
 			:	api.get('/recommendations/popular').then((r) => r.data),
-		scaleTime: 1000 * 60 * 10,
+		staleTime: 1000 * 60 * 10,
 	});
 
 	if (isLoading) {

@@ -46,6 +46,30 @@ const PostRoomPage = () => {
 	const [uploadedImages, setUploadedImages] = useState<
 		{ file: File; preview: string }[]
 	>([]);
+	const [priceEstimate, setPriceEstimate] = useState<any>(null);
+
+	// const fetchPriceEstimate = async () => {
+	// 	const { price, area, address } = formValues;
+	// 	if (!price || !area || !address) return;
+	// 	try {
+	// 		const res = await api.get('/analytics/price-estimate', {
+	// 			params: {
+	// 				area,
+	// 				amenityCount: selectedAmenities.length,
+	// 				floor: formValues.floor || 1,
+	// 				address,
+	// 				currentPrice: price,
+	// 			},
+	// 		});
+	// 		setPriceEstimate(res.data);
+	// 	} catch {}
+	// };
+
+	// // Gọi khi price/area thay đổi (debounce 800ms):
+	// useEffect(() => {
+	// 	const timer = setTimeout(fetchPriceEstimate, 800);
+	// 	return () => clearTimeout(timer);
+	// }, [formValues.price, formValues.area, formValues.address]);
 
 	useLayoutEffect(() => {
 		if (!authLoading && user?.role !== 'LANDLORD') {
@@ -302,6 +326,47 @@ const PostRoomPage = () => {
 												<p className='text-sm text-red-500 mt-1'>
 													{errors.price.message}
 												</p>
+											)}
+											{priceEstimate && (
+												<div
+													className={`rounded-lg p-4 text-sm border ${
+														priceEstimate.currentPriceStatus === 'fair' ?
+															'bg-green-50 border-green-200'
+														: priceEstimate.currentPriceStatus === 'high' ?
+															'bg-orange-50 border-orange-200'
+														: priceEstimate.currentPriceStatus === 'very_high' ?
+															'bg-red-50 border-red-200'
+														:	'bg-blue-50 border-blue-200'
+													}`}>
+													<p className='font-medium mb-1'>💡 Gợi ý định giá</p>
+													<p className='text-gray-600'>
+														Giá thị trường khu vực:{' '}
+														<strong>
+															{new Intl.NumberFormat('vi-VN').format(
+																priceEstimate.estimatedPrice,
+															)}
+															đ
+														</strong>{' '}
+														(
+														{new Intl.NumberFormat('vi-VN').format(
+															priceEstimate.minPrice,
+														)}
+														đ –{' '}
+														{new Intl.NumberFormat('vi-VN').format(
+															priceEstimate.maxPrice,
+														)}
+														đ)
+													</p>
+													<p className='mt-1 font-medium'>
+														{priceEstimate.suggestion}
+													</p>
+													{priceEstimate.similarRoomsCount > 0 && (
+														<p className='text-xs text-gray-400 mt-1'>
+															Dựa trên {priceEstimate.similarRoomsCount} phòng
+															tương tự trong khu vực
+														</p>
+													)}
+												</div>
 											)}
 										</div>
 										<div>
