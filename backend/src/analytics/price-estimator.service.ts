@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-interface Coefficients {
+export interface Coefficients {
   intercept: number;
   area: number;
   amenity: number;
   floor: number;
 }
 
-interface PriceEstimate {
+export interface PriceEstimate {
   estimatedPrice: number;
   minPrice: number;
   maxPrice: number;

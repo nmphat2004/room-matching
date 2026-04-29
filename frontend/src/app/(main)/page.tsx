@@ -1,8 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import RoomCard from '@/components/room/room-card';
-import RoomRecommendations from '@/components/room/room-recommendation';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { districts, priceRanges, roomTypesList } from '@/data/data';
 import { getRooms } from '@/lib/api/room.api';
@@ -13,8 +12,12 @@ import {
 	Building2,
 	ChevronRight,
 	Home,
+	MapPin,
 	School,
 	Search,
+	ShieldCheck,
+	Star,
+	Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,6 +28,7 @@ const HomePage = () => {
 	const [searchDistrict, setSearchDistrict] = useState('');
 	const [priceRange, setPriceRange] = useState('');
 	const [roomType, setRoomType] = useState('');
+	const [areaRange, setAreaRange] = useState('');
 	const { user } = useAuthStore();
 	const router = useRouter();
 
@@ -45,19 +49,19 @@ const HomePage = () => {
 		{
 			icon: Home,
 			title: 'Phòng trọ',
-			description: 'Phòng đơn, tiện nghi cơ bản',
+			description: '10,000+ phòng',
 			color: 'bg-blue-50 text-blue-600',
 		},
 		{
 			icon: Building,
 			title: 'Nhà nguyên căn',
-			description: 'Nguyên căn riêng tư',
+			description: '2,500+ nhà',
 			color: 'bg-green-50 text-green-600',
 		},
 		{
 			icon: Building2,
 			title: 'Chung cư mini',
-			description: 'Căn hộ, đầy đủ tiện nghi',
+			description: '1,200+ căn',
 			color: 'bg-purple-50 text-purple-600',
 		},
 		{
@@ -68,58 +72,71 @@ const HomePage = () => {
 		},
 	];
 
+	const hotLocations = [
+		{
+			name: 'Quận 1',
+			img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=500&h=300&fit=crop',
+		},
+		{
+			name: 'Quận 10',
+			img: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=500&h=300&fit=crop',
+		},
+		{
+			name: 'Tân Bình',
+			img: 'https://images.unsplash.com/photo-1502003148287-a82ef80a6abc?w=500&h=300&fit=crop',
+		},
+		{
+			name: 'Bình Thạnh',
+			img: 'https://images.unsplash.com/photo-1629813350106-cf9b66d48259?w=500&h=300&fit=crop',
+		},
+	];
+
 	// Fetch newest rooms
 	const { data: latestRooms, isLoading: newestLoading } = useQuery({
 		queryKey: ['rooms', 'newest'],
-		queryFn: () =>
-			getRooms({
-				sortBy: 'newest',
-				page: 1,
-				limit: 3,
-			}),
+		queryFn: () => getRooms({ sortBy: 'newest', page: 1, limit: 4 }),
 	});
 
 	// Fetch top rated rooms
 	const { data: topRatedRooms, isLoading: ratingLoading } = useQuery({
 		queryKey: ['rooms', 'top-rated'],
-		queryFn: () =>
-			getRooms({
-				sortBy: 'rating',
-				page: 1,
-				limit: 4,
-			}),
+		queryFn: () => getRooms({ sortBy: 'rating', page: 1, limit: 4 }),
 	});
 
 	const isLoading = newestLoading || ratingLoading;
 
 	return (
-		<div className='bg-background'>
-			{/* Hero Section */}
-			<div
-				className='relative bg-linear-to-br from-primary/10 to-accent/10 py-16'
+		<div className='bg-background flex flex-col'>
+			{/* Advanced Hero Section */}
+			<section
+				className='relative pt-24 pb-32 flex items-center justify-center'
 				style={{
 					backgroundImage:
-						'url(https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1600&blur=40)',
+						'url(https://images.unsplash.com/photo-1560518883-ce09059eeefa?w=1600&blur=40)',
 					backgroundSize: 'cover',
 					backgroundPosition: 'center',
-					backgroundBlendMode: 'overlay',
 				}}>
-				<div className='absolute inset-0 bg-white/80 backdrop-blur-sm'></div>
-				<div className='relative max-w-4xl mx-auto px-4 text-center'>
-					<h1 className='mb-3 text-4xl'>Tìm phòng trọ hoàn hảo của bạn</h1>
-					<p className='mb-8 text-lg text-muted-foreground'>
-						Đánh giá thật từ người thuê - Minh bạch, tin cậy
+				<div className='absolute inset-0 bg-gradient-to-r from-blue-900/80 to-slate-900/80'></div>
+				<div className='relative z-10 w-full max-w-5xl mx-auto px-4 text-center'>
+					<h1 className='text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight drop-shadow-md'>
+						Kênh thông tin Phòng Trọ số 1 Việt Nam
+					</h1>
+					<p className='text-xl text-blue-100 mb-10 font-medium drop-shadow'>
+						Hơn 100.000 tin đăng phòng trọ, nhà nguyên căn, chung cư mini
 					</p>
 
-					{/* Search bar */}
-					<div className='bg-white rounded-xl shadow-lg p-6'>
-						<div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-							<div>
-								<Label className='block mb-2 text-sm'>Quận</Label>
+					{/* Deep Search Panel */}
+					<div className='bg-white rounded-2xl shadow-2xl p-4 md:p-6 w-full text-left'>
+						<div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+							<div className='space-y-1'>
+								<label className='text-xs font-semibold text-gray-500 uppercase flex items-center gap-1'>
+									<MapPin className='w-3 h-3' /> Khu vực
+								</label>
 								<select
 									value={searchDistrict}
 									onChange={(e) => setSearchDistrict(e.target.value)}
-									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
+									className='w-full px-3 py-2.5 outline-none rounded-lg bg-gray-50 border border-gray-200 focus:border-primary transition-colors focus:ring-1 focus:ring-primary'>
+									<option value=''>Tất cả Quận/Huyện</option>
 									{districts.map((district) => (
 										<option key={district} value={district}>
 											{district}
@@ -128,112 +145,159 @@ const HomePage = () => {
 								</select>
 							</div>
 
-							<div>
-								<label className='block mb-2 text-sm'>Khoảng giá</label>
-								<select
-									value={priceRange}
-									onChange={(e) => setPriceRange(e.target.value)}
-									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									{priceRanges.map((priceRange) => (
-										<option key={priceRange.label}>{priceRange.label}</option>
-									))}
-								</select>
-							</div>
-
-							<div>
-								<label className='block mb-2 text-sm'>Loại phòng</label>
+							<div className='space-y-1'>
+								<label className='text-xs font-semibold text-gray-500 uppercase flex items-center gap-1'>
+									<Home className='w-3 h-3' /> Loại phòng
+								</label>
 								<select
 									value={roomType}
 									onChange={(e) => setRoomType(e.target.value)}
-									className='w-full px-4 py-2.5 rounded-lg border border-border bg-input-background'>
-									{roomTypesList.map((roomType) => (
-										<option key={roomType.label} value={roomType.value}>
-											{roomType.label}
+									className='w-full px-3 py-2.5 outline-none rounded-lg bg-gray-50 border border-gray-200 focus:border-primary transition-colors focus:ring-1 focus:ring-primary'>
+									<option value=''>Tất cả loại phòng</option>
+									{roomTypesList.map((type) => (
+										<option key={type.label} value={type.value}>
+											{type.label}
 										</option>
 									))}
 								</select>
 							</div>
-						</div>
 
-						<Link href='/rooms'>
-							<Button
-								variant='default'
-								className='w-full h-10 mt-4 bg-primary hover:bg-primary/90'
-								size='lg'>
-								<Search className='w-5 h-5 mr-2' />
-								Tìm kiếm
-							</Button>
-						</Link>
+							<div className='space-y-1'>
+								<label className='text-xs font-semibold text-gray-500 uppercase flex items-center gap-1'>
+									💲 Mức giá
+								</label>
+								<select
+									value={priceRange}
+									onChange={(e) => setPriceRange(e.target.value)}
+									className='w-full px-3 py-2.5 outline-none rounded-lg bg-gray-50 border border-gray-200 focus:border-primary transition-colors focus:ring-1 focus:ring-primary'>
+									<option value=''>Chọn mức giá</option>
+									{priceRanges.map((range) => (
+										<option key={range.label} value={range.label}>
+											{range.label}
+										</option>
+									))}
+								</select>
+							</div>
+
+							<div className='space-y-1'>
+								<label className='text-xs font-semibold text-gray-500 uppercase opacity-0 hidden md:block'>
+									Search
+								</label>
+								<Link
+									href={`/rooms?district=${searchDistrict}&roomType=${roomType}&price=${priceRange}`}
+									className='w-full flex'>
+									<Button className='w-full h-[42px] bg-primary hover:bg-primary/95 text-md font-bold shadow-md'>
+										<Search className='w-4 h-4 mr-2' /> Tìm kiếm
+									</Button>
+								</Link>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div>
+			</section>
 
-			<div className='container mx-auto px-4'>
-				<RoomRecommendations />
-			</div>
-
-			{/* Quick categories */}
-			<div className='max-w-7xl mx-auto px-4 py-12'>
-				<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
-					{categories.map((category) => (
-						<Link
-							href={`/rooms?roomType=${category.title.replace(/\s+/g, '+')}`}
-							key={category.title}
-							className='bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-shadow duration-200 text-center'>
-							<div
-								className={`w-16 h-16 ${category.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
-								<category.icon className='w-8 h-8' />
-							</div>
-							<h3 className='mb-1'>{category.title}</h3>
-							<p className='text-sm text-muted-foreground'>
-								{category.description}
+			{/* Stats Banner */}
+			<section className='bg-primary text-white py-6 shadow-inner relative z-20 -mt-8 mx-auto max-w-6xl rounded-2xl w-full'>
+				<div className='grid grid-cols-1 md:grid-cols-3 gap-8 text-center px-4'>
+					<div className='flex flex-col items-center justify-center gap-2'>
+						<ShieldCheck className='w-8 h-8 opacity-80' />
+						<div>
+							<h4 className='text-xl font-bold'>100% Tin duyệt kỹ</h4>
+							<p className='text-sm text-primary-foreground/80'>
+								Hệ thống lọc tự động thông minh
 							</p>
+						</div>
+					</div>
+					<div className='flex flex-col items-center justify-center gap-2 border-y md:border-y-0 md:border-x border-white/20 py-4 md:py-0'>
+						<Star className='w-8 h-8 opacity-80' />
+						<div>
+							<h4 className='text-xl font-bold'>Trải nghiệm thực tế</h4>
+							<p className='text-sm text-primary-foreground/80'>
+								Đánh giá trực tiếp từ người thuê
+							</p>
+						</div>
+					</div>
+					<div className='flex flex-col items-center justify-center gap-2'>
+						<Users className='w-8 h-8 opacity-80' />
+						<div>
+							<h4 className='text-xl font-bold'>10.000+ Lượt truy cập</h4>
+							<p className='text-sm text-primary-foreground/80'>
+								Tìm kiếm dễ dàng, nhanh chóng
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Hot Locations */}
+			<section className='max-w-7xl mx-auto px-4 py-16 w-full'>
+				<h2 className='text-2xl font-bold mb-6'>Khu vực nổi bật</h2>
+				<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+					{hotLocations.map((loc) => (
+						<Link
+							href={`/rooms?district=${loc.name}`}
+							key={loc.name}
+							className='relative h-40 rounded-xl overflow-hidden group cursor-pointer shadow-sm hover:shadow-md transition-all'>
+							<img
+								src={loc.img}
+								alt={loc.name}
+								className='w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out'
+							/>
+							<div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent' />
+							<div className='absolute bottom-4 left-4'>
+								<h3 className='text-lg font-bold text-white mb-1 shadow-black'>
+									{loc.name}
+								</h3>
+							</div>
 						</Link>
 					))}
 				</div>
-			</div>
+			</section>
+
+			{/* Quick categories */}
+			<section className='bg-secondary/30 py-12'>
+				<div className='max-w-7xl mx-auto px-4'>
+					<h2 className='text-2xl font-bold mb-6'>Phân loại phòng</h2>
+					<div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+						{categories.map((category) => (
+							<Link
+								href={`/rooms?roomType=${category.title.replace(/\s+/g, '+')}`}
+								key={category.title}
+								className='bg-white border border-border rounded-xl p-6 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-center'>
+								<div
+									className={`w-16 h-16 ${category.color} rounded-full flex items-center justify-center mx-auto mb-4`}>
+									<category.icon className='w-8 h-8' />
+								</div>
+								<h3 className='mb-1 font-bold text-gray-800'>
+									{category.title}
+								</h3>
+								<p className='text-sm text-muted-foreground'>
+									{category.description}
+								</p>
+							</Link>
+						))}
+					</div>
+				</div>
+			</section>
 
 			{/* Latest Listings */}
-			<div className='bg-secondary py-12'>
-				<div className='max-w-7xl mx-auto px-4'>
-					<div className='flex items-center justify-between mb-6'>
-						<h2>Tin đăng mới nhất</h2>
-						<Link
-							href='/rooms?sortBy=newest'
-							className='flex items-center gap-1 text-primary hover:underline'>
-							Xem tất cả
-							<ChevronRight className='w-4 h-4' />
-						</Link>
+			<section className='max-w-7xl mx-auto px-4 py-16 w-full'>
+				<div className='flex items-center justify-between mb-8'>
+					<div>
+						<h2 className='text-2xl font-bold text-gray-900'>
+							Tin đăng mới nhất
+						</h2>
+						<p className='text-muted-foreground text-sm mt-1'>
+							Cập nhật liên tục 24/7
+						</p>
 					</div>
-
-					<div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
-						{isLoading ?
-							Array.from({ length: 3 }).map((_, i) => (
-								<div key={i} className='space-y-4'>
-									<Skeleton className='h-48 w-full rounded-xl' />
-									<Skeleton className='h-4 w-3/4' />
-									<Skeleton className='h-4 w-1/2' />
-								</div>
-							))
-						:	latestRooms?.data.map((room) => (
-								<RoomCard room={room} key={room.id} layout='grid' />
-							))
-						}
-					</div>
-				</div>
-			</div>
-
-			{/* Top Rated Rooms */}
-			<div className='max-w-7xl mx-auto px-4 py-12'>
-				<div className='flex items-center justify-between mb-6'>
-					<h2>Phòng đánh giá cao</h2>
 					<Link
-						href='/rooms?sortBy=rating'
-						className='flex items-center gap-1 text-primary hover:underline'>
-						Xem tất cả
-						<ChevronRight className='w-4 h-4' />
+						href='/rooms?sortBy=newest'
+						className='flex items-center gap-1 text-primary hover:bg-primary/10 px-4 py-2 rounded-lg font-medium transition-colors'>
+						Xem thêm <ChevronRight className='w-4 h-4' />
 					</Link>
 				</div>
+
 				<div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
 					{isLoading ?
 						Array.from({ length: 4 }).map((_, i) => (
@@ -243,30 +307,68 @@ const HomePage = () => {
 								<Skeleton className='h-4 w-1/2' />
 							</div>
 						))
-					:	topRatedRooms?.data.map((room) => (
+					:	latestRooms?.data.map((room: any) => (
 							<RoomCard room={room} key={room.id} layout='grid' />
 						))
 					}
 				</div>
-			</div>
+			</section>
+
+			{/* Top Rated Rooms */}
+			<section className='bg-primary/5 py-16 w-full'>
+				<div className='max-w-7xl mx-auto px-4'>
+					<div className='flex items-center justify-between mb-8'>
+						<div>
+							<h2 className='text-2xl font-bold text-gray-900'>
+								Phòng đánh giá cao nhất
+							</h2>
+							<p className='text-muted-foreground text-sm mt-1'>
+								Được xét duyệt bởi người từng thuê
+							</p>
+						</div>
+						<Link
+							href='/rooms?sortBy=rating'
+							className='flex items-center gap-1 text-primary hover:bg-primary/10 px-4 py-2 rounded-lg font-medium transition-colors'>
+							Xem thêm <ChevronRight className='w-4 h-4' />
+						</Link>
+					</div>
+					<div className='grid grid-cols-1 md:grid-cols-4 gap-6'>
+						{isLoading ?
+							Array.from({ length: 4 }).map((_, i) => (
+								<div key={i} className='space-y-4'>
+									<Skeleton className='h-48 w-full rounded-xl' />
+									<Skeleton className='h-4 w-3/4' />
+									<Skeleton className='h-4 w-1/2' />
+								</div>
+							))
+						:	topRatedRooms?.data.map((room: any) => (
+								<RoomCard room={room} key={room.id} layout='grid' />
+							))
+						}
+					</div>
+				</div>
+			</section>
 
 			{/* CTA Banner for Landlords */}
-			<div className='bg-linear-to-r from-primary to-blue-200 text-white py-16'>
+			<section className='bg-gradient-to-br from-slate-900 to-blue-900 text-white py-20 w-full'>
 				<div className='max-w-4xl mx-auto px-4 text-center'>
-					<h2 className='mb-4 text-white text-3xl'>Bạn là chủ nhà?</h2>
-					<p className='mb-6 text-lg text-white'>
-						Đăng tin cho thuê phòng miễn phí và tiếp cận hàng nghìn người thuê
+					<h2 className='mb-4 text-3xl md:text-4xl font-bold'>
+						Bạn có phòng cho thuê?
+					</h2>
+					<p className='mb-8 text-lg text-blue-100 max-w-2xl mx-auto'>
+						Tiếp cận hàng nghìn khách thuê tiềm năng mỗi ngày. Đăng tin miễn
+						phí, duyệt nhanh chóng, quản lý dễ dàng.
 					</p>
 					<Link href='/post' onClick={handlePostClick}>
 						<Button
 							variant='default'
 							size='lg'
-							className='bg-white h-10 w-40 text-primary hover:bg-white/90'>
+							className='bg-primary h-12 px-8 text-white hover:bg-primary/90 text-lg font-bold shadow-xl border border-white/20'>
 							Đăng tin ngay
 						</Button>
 					</Link>
 				</div>
-			</div>
+			</section>
 		</div>
 	);
 };

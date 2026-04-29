@@ -20,6 +20,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import dynamic from 'next/dynamic';
+
+const RoomMap = dynamic(() => import('@/components/room/room-map'), {
+	ssr: false,
+	loading: () => <Skeleton className="h-[300px] w-full rounded-xl mt-4" />
+});
 
 const RoomDetailPage = () => {
 	const { id } = useParams();
@@ -274,6 +280,16 @@ const RoomDetailPage = () => {
 								</p>
 							</div>
 						</div>
+
+						<Separator />
+
+						{/* Map Integration */}
+						{room.lat && room.lng && (
+							<div className='space-y-4'>
+								<h2 className='text-xl font-bold'>Bản đồ vị trí</h2>
+								<RoomMap lat={room.lat} lng={room.lng} address={room.address} />
+							</div>
+						)}
 
 						<Separator />
 
