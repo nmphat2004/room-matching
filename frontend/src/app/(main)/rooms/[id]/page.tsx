@@ -2,7 +2,10 @@
 import NeighborhoodWidget from '@/components/analytics/neighborhood-widget';
 import ReviewForm from '@/components/review/review-form';
 import AmenityIcon from '@/components/room/amenity-icon';
+import DetailImageGallery from '@/components/room/detail-image-gallery';
+import FeaturedSidebarList from '@/components/room/featured-sidebar-list';
 import { PriceTag } from '@/components/room/price-tag';
+import RelatedRoomCard from '@/components/room/related-room-card';
 import { StarRating } from '@/components/room/star-rating';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getReviews } from '@/lib/api/review.api';
-import { getRoomById } from '@/lib/api/room.api';
+import { getRoomById, getRooms } from '@/lib/api/room.api';
+import api from '@/lib/axios';
+import { formatRelativeTime } from '@/lib/time-format';
 import { getSavedRoomStatus, saveRoom, unsaveRoom } from '@/lib/api/user.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Heart, MapPin, MessageCircle, Phone, Share2 } from 'lucide-react';
-import Image from 'next/image';
+import { Eye, Heart, MapPin, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -24,15 +28,24 @@ import dynamic from 'next/dynamic';
 
 const RoomMap = dynamic(() => import('@/components/room/room-map'), {
 	ssr: false,
-	loading: () => <Skeleton className="h-[300px] w-full rounded-xl mt-4" />
+	loading: () => <Skeleton className='h-[300px] w-full rounded-xl mt-4' />,
 });
+
+const inferDistrict = (address?: string) => {
+	if (!address) return '';
+	const chunks = address
+		.split(',')
+		.map((item) => item.trim())
+		.filter(Boolean);
+	if (chunks.length < 2) return '';
+	return chunks[chunks.length - 2];
+};
 
 const RoomDetailPage = () => {
 	const { id } = useParams();
 	const { user } = useAuthStore();
 	const router = useRouter();
 	const queryClient = useQueryClient();
-	const [showAllPhotos, setShowAllPhotos] = useState(false);
 	const [phoneRevealed, setPhoneRevealed] = useState(false);
 
 	const { data: room, isLoading } = useQuery({
@@ -50,6 +63,49 @@ const RoomDetailPage = () => {
 		queryKey: ['saved-room-status', id, user?.id],
 		queryFn: () => getSavedRoomStatus(id as string),
 		enabled: Boolean(id) && Boolean(user),
+	});
+
+	const district = inferDistrict(room?.address);
+	const { data: featuredRoomsData } = useQuery({
+		queryKey: ['room-detail-featured', id],
+		queryFn: () => getRooms({ sortBy: 'rating', page: 1, limit: 10 }),
+		enabled: Boolean(room?.id),
+	});
+
+	const { data: sameAreaRoomsData } = useQuery({
+		queryKey: ['room-detail-same-area', id, district],
+		queryFn: () =>
+			getRooms({
+				selectedDistrict: district || undefined,
+				sortBy: 'newest',
+				page: 1,
+				limit: 10,
+			}),
+		enabled: Boolean(room?.id),
+	});
+
+	const { data: latestRoomsData } = useQuery({
+		queryKey: ['room-detail-latest', id],
+		queryFn: () => getRooms({ sortBy: 'newest', page: 1, limit: 10 }),
+		enabled: Boolean(room?.id),
+	});
+	const shouldGeocode = Boolean(room?.address);
+	const {
+		data: geocodeResult,
+		isLoading: isGeocoding,
+		isError: geocodeError,
+	} = useQuery({
+		queryKey: ['room-detail-geocode', room?.id, room?.address],
+		queryFn: async () => {
+			const res = await api.get<{ lat: number; lng: number }>(
+				'/analytics/geocode',
+				{
+					params: { address: room?.address },
+				},
+			);
+			return res.data;
+		},
+		enabled: shouldGeocode,
 	});
 
 	const { mutate: toggleSavedRoom, isPending: isSaving } = useMutation({
@@ -85,11 +141,6 @@ const RoomDetailPage = () => {
 
 	if (!room) return null;
 
-	const primaryImage =
-		room.images?.find((img) => img.isPrimary) || room.images?.[0];
-	const otherImages =
-		room.images?.filter((img) => !img.isPrimary).slice(0, 4) || [];
-
 	const reviews = reviewData?.data || [];
 	const saved = Boolean(savedRoomStatus?.saved);
 	const scores = reviewData?.avgScores || {
@@ -99,54 +150,35 @@ const RoomDetailPage = () => {
 		landlordRating: 0,
 		rating: 0,
 	};
+	const featuredRooms =
+		featuredRoomsData?.data
+			?.filter((item) => item.id !== room.id)
+			.slice(0, 4) || [];
+	const sameAreaRooms =
+		sameAreaRoomsData?.data
+			?.filter((item) => item.id !== room.id)
+			.slice(0, 4) || [];
+	const latestRooms =
+		latestRoomsData?.data?.filter((item) => item.id !== room.id).slice(0, 4) ||
+		[];
+	const mapLat = geocodeResult?.lat;
+	const mapLng = geocodeResult?.lng;
+	const hasMapCoordinates = Number.isFinite(mapLat) && Number.isFinite(mapLng);
 
 	return (
 		<div className='bg-background min-h-screen'>
 			<div className='max-w-7xl mx-auto px-4 py-6 md:py-10 text-pretty'>
-				{/* Photo Gallery */}
-				<section className='relative mb-8'>
-					<div className='grid grid-cols-1 md:grid-cols-4 gap-2 h-[300px] md:h-[450px] rounded-2xl overflow-hidden shadow-sm'>
-						<div className='md:col-span-2 md:row-span-2 relative h-full'>
-							{primaryImage && (
-								<Image
-									src={primaryImage.url}
-									alt={room.title}
-									fill
-									className='object-cover hover:scale-105 transition-transform duration-500'
-									priority
-								/>
-							)}
-						</div>
-						{otherImages.length > 0 ?
-							otherImages.map((image, index) => (
-								<div
-									key={index}
-									className={`relative h-full ${index >= 2 ? 'hidden md:block' : ''}`}>
-									<Image
-										src={image.url}
-										alt={`${room.title} ${index + 2}`}
-										fill
-										className='object-cover hover:scale-110 transition-transform duration-500'
-									/>
-								</div>
-							))
-						:	<div className='hidden md:block col-span-2 row-span-2 bg-secondary/30 items-center justify-center'>
-								<p className='text-muted-foreground'>No more images</p>
-							</div>
-						}
-						<Button
-							variant='secondary'
-							size='sm'
-							onClick={() => setShowAllPhotos(true)}
-							className='absolute bottom-4 right-4 bg-white/90 backdrop-blur-sm border shadow-sm hover:bg-white'>
-							Xem tất cả {room.images.length} ảnh
-						</Button>
-					</div>
-				</section>
-
-				<div className='grid grid-cols-1 lg:grid-cols-3 gap-10'>
+				<div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
 					{/* Main Content */}
 					<div className='lg:col-span-2 space-y-8'>
+						<DetailImageGallery
+							title={room.title}
+							images={room.images.map((image) => ({
+								id: image.id,
+								url: image.url,
+							}))}
+						/>
+
 						{/* Title & Stats */}
 						<div className='space-y-4'>
 							<h1 className='text-2xl md:text-3xl font-bold tracking-tight'>
@@ -164,6 +196,7 @@ const RoomDetailPage = () => {
 									<span className='flex items-center gap-1'>
 										<Eye className='w-4 h-4' /> {room.viewCount} lượt xem
 									</span>
+									<span>{formatRelativeTime(room.createdAt)}</span>
 								</div>
 							</div>
 
@@ -283,13 +316,23 @@ const RoomDetailPage = () => {
 
 						<Separator />
 
-						{/* Map Integration */}
-						{room.lat && room.lng && (
-							<div className='space-y-4'>
-								<h2 className='text-xl font-bold'>Bản đồ vị trí</h2>
-								<RoomMap lat={room.lat} lng={room.lng} address={room.address} />
-							</div>
-						)}
+						<div className='space-y-4'>
+							<h2 className='text-xl font-bold'>Bản đồ vị trí</h2>
+							<RoomMap address={room.address} />
+						</div>
+
+						{isGeocoding ?
+							<Skeleton className='h-36 w-full rounded-xl' />
+						: hasMapCoordinates ?
+							<NeighborhoodWidget
+								lat={mapLat as number}
+								lng={mapLng as number}
+							/>
+						: geocodeError ?
+							<p className='text-xs text-muted-foreground p-3 rounded-lg border border-dashed'>
+								Không phân tích được khu vực từ địa chỉ này.
+							</p>
+						:	null}
 
 						<Separator />
 
@@ -394,11 +437,38 @@ const RoomDetailPage = () => {
 								</div>
 							)}
 						</div>
+
+						{sameAreaRooms.length > 0 && (
+							<section className='space-y-4 rounded-2xl border border-border bg-card p-4 md:p-5'>
+								<div className='flex items-center justify-between'>
+									<h2 className='text-xl font-bold'>Tin đăng cùng khu vực</h2>
+									<span className='text-sm text-muted-foreground'>
+										{district}
+									</span>
+								</div>
+								<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+									{sameAreaRooms.map((relatedRoom) => (
+										<RelatedRoomCard key={relatedRoom.id} room={relatedRoom} />
+									))}
+								</div>
+							</section>
+						)}
+
+						{latestRooms.length > 0 && (
+							<section className='space-y-4 rounded-2xl border border-border bg-card p-4 md:p-5'>
+								<h2 className='text-xl font-bold'>Tin đăng mới cập nhật</h2>
+								<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+									{latestRooms.map((latestRoom) => (
+										<RelatedRoomCard key={latestRoom.id} room={latestRoom} />
+									))}
+								</div>
+							</section>
+						)}
 					</div>
 
 					{/* Sidebar */}
 					<div className='lg:col-span-1'>
-						<aside className='sticky top-28 space-y-6'>
+						<aside className='sticky top-24 space-y-6'>
 							{/* Landlord Card */}
 							<div className='bg-card border border-border rounded-3xl p-8'>
 								<div className='flex flex-col items-center text-center space-y-4 mb-8'>
@@ -411,7 +481,7 @@ const RoomDetailPage = () => {
 										</Avatar>
 										<div className='absolute bottom-1 right-1 w-6 h-6 bg-green-500 border-4 border-white rounded-full' />
 									</div>
-									<div className='space-y-1'>
+									<div>
 										<h3 className='text-xl font-bold'>{room.owner.fullName}</h3>
 										<p className='text-xs text-muted-foreground'>
 											Thành viên từ{' '}
@@ -420,7 +490,7 @@ const RoomDetailPage = () => {
 									</div>
 								</div>
 
-								<div className='space-y-3'>
+								<div className='space-y-2'>
 									<div className='group relative overflow-hidden p-px rounded-lg border border-primary'>
 										<div className='bg-white rounded-lg p-3 text-center '>
 											{phoneRevealed ?
@@ -445,21 +515,10 @@ const RoomDetailPage = () => {
 										</Button>
 									</Link>
 
-									{room.lat && room.lng && (
-										<NeighborhoodWidget lat={room.lat} lng={room.lng} />
-									)}
-
-									<Button
-										variant='outline'
-										className='w-full h-12 rounded-lg text-sm font-bold border-2 hover:bg-secondary/50'>
-										<Phone className='w-4 h-4 mr-2' />
-										GỌI ĐIỆN
-									</Button>
-
-									<div className='grid grid-cols-2 gap-3 pt-4'>
+									<div className='pt-4 items-center justify-center flex'>
 										<Button
 											variant='ghost'
-											className={`h-12 rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
+											className={`rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
 											disabled={isSaving}
 											onClick={() => {
 												if (!user) {
@@ -474,16 +533,10 @@ const RoomDetailPage = () => {
 											/>
 											{saved ? 'ĐÃ LƯU' : 'LƯU PHÒNG'}
 										</Button>
-
-										<Button
-											variant='ghost'
-											className='h-12 rounded-xl text-xs font-bold border hover:bg-secondary'>
-											<Share2 className='w-4 h-4 mr-2' />
-											CHIA SẺ
-										</Button>
 									</div>
 								</div>
 							</div>
+							<FeaturedSidebarList rooms={featuredRooms} />
 						</aside>
 					</div>
 				</div>

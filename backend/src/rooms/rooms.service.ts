@@ -6,12 +6,27 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRoomDto, SearchRoomDto, UpdateRoomDto } from './dto/room.dto';
+import { GeocodingService } from '../analytics/geocoding.service';
 
 @Injectable()
 export class RoomsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private geocodingService: GeocodingService,
+  ) {}
 
   async create(ownerId: string, dto: CreateRoomDto) {
+    let { lat, lng } = dto;
+
+    // Tự động lấy tọa độ nếu chưa có
+    if ((!lat || !lng) && dto.address) {
+      const coords = await this.geocodingService.geocode(dto.address);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
+
     const room = await this.prisma.room.create({
       data: {
         ownerId,
@@ -25,8 +40,8 @@ export class RoomsService {
         description: dto.description,
         address: dto.address,
         rule: dto.rule,
-        lat: dto.lat,
-        lng: dto.lng,
+        lat,
+        lng,
         area: dto.area,
         floor: dto.floor,
         images: dto.imageUrls
@@ -62,14 +77,27 @@ export class RoomsService {
 
   async update(id: string, ownerId: string, dto: UpdateRoomDto) {
     const { amenityIds, imageUrls, ...rest } = dto;
+    let { lat, lng } = rest;
+
     const room = await this.prisma.room.findUnique({ where: { id } });
     if (!room) throw new NotFoundException('Room not found');
     if (room.ownerId !== ownerId) throw new ForbiddenException('Not your room');
+
+    // Tự động cập nhật tọa độ nếu địa chỉ thay đổi mà ko có tọa độ mới
+    if (rest.address && rest.address !== room.address && (!lat || !lng)) {
+      const coords = await this.geocodingService.geocode(rest.address);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
 
     return this.prisma.room.update({
       where: { id },
       data: {
         ...rest,
+        lat,
+        lng,
         amenities: amenityIds
           ? {
               deleteMany: {},

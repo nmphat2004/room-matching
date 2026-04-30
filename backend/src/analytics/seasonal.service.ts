@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiService } from './ai.service';
 
 // Seasonal Index thị trường phòng trọ VN
 // Tính từ thực tế: tháng 8-9 nhập học = cao nhất, tháng 2 Tết = thấp nhất
@@ -36,7 +37,10 @@ const MONTH_VI = [
 
 @Injectable()
 export class SeasonalService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiService: AiService,
+  ) {}
 
   async predict(district?: string) {
     // Lấy giá trung bình từ DB
@@ -96,6 +100,15 @@ export class SeasonalService {
       avgPrice * (currentIndex - bestMonth.seasonalIndex),
     );
 
+    // AI generated advice
+    const aiAdvice = await this.getAiAdvice(
+      currentMonth,
+      bestMonth,
+      worstMonth,
+      avgPrice,
+      saving,
+    );
+
     return {
       avgPrice: Math.round(avgPrice),
       currentMonth,
@@ -108,7 +121,34 @@ export class SeasonalService {
         bestMonth.month,
         saving,
       ),
+      aiAdvice,
     };
+  }
+
+  private async getAiAdvice(
+    currentMonth: number,
+    best: { monthName: string; seasonalIndex: number },
+    worst: { monthName: string; seasonalIndex: number },
+    avgPrice: number,
+    saving: number,
+  ) {
+    const prompt = `
+      Bạn là một chuyên gia tư vấn bất động sản tại Việt Nam. 
+      Dựa trên dữ liệu thị trường phòng trọ sau đây, hãy đưa ra một lời khuyên ngắn gọn (khoảng 2-3 câu) cho người đang tìm phòng.
+      
+      Dữ liệu:
+      - Tháng hiện tại: ${MONTH_VI[currentMonth]}
+      - Tháng tốt nhất để thuê (giá thấp nhất): ${best.monthName} (Tiết kiệm được khoảng ${saving}đ so với hiện tại)
+      - Tháng cao điểm (giá cao nhất, khó tìm phòng): ${worst.monthName} (Mùa nhập học/chuyển trọ)
+      - Giá trung bình khu vực: ${avgPrice}đ
+      
+      Yêu cầu:
+      - Nếu tháng hiện tại cách xa tháng tốt nhất (> 3 tháng), đừng chỉ khuyên họ chờ đợi. Hãy tư vấn dựa trên việc so sánh với tháng cao điểm sắp tới (Tháng 8, 9).
+      - Ngôn ngữ: Tiếng Việt, thân thiện, chuyên nghiệp.
+      - Trả lời trực tiếp vào lời khuyên.
+    `;
+
+    return this.aiService.generateText(prompt);
   }
 
   private getTag(month: number): string {

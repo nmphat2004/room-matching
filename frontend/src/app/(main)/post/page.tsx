@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,18 @@ import { uploadImage } from '@/lib/api/upload.api';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/auth.store';
+import dynamic from 'next/dynamic';
+import api from '@/lib/axios';
+
+const PostMapPreview = dynamic(
+	() => import('@/components/room/post-map-preview'),
+	{
+		ssr: false,
+		loading: () => (
+			<div className='h-[300px] w-full bg-secondary animate-pulse rounded-xl' />
+		),
+	},
+);
 
 const roomSchema = z.object({
 	title: z.string().min(5, 'Tiêu đề phải từ 5 ký tự trở lên'),
@@ -46,7 +57,24 @@ const PostRoomPage = () => {
 	const [uploadedImages, setUploadedImages] = useState<
 		{ file: File; preview: string }[]
 	>([]);
+
 	const [priceEstimate, setPriceEstimate] = useState<any>(null);
+	const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
+		null,
+	);
+
+	const handleGeocode = async (address: string) => {
+		if (!address || address.length < 8) return;
+		try {
+			const res = await api.get('/analytics/geocode', { params: { address } });
+			if (res.data) {
+				setCoords(res.data);
+				toast.success('Đã xác định vị trí trên bản đồ!');
+			}
+		} catch (err) {
+			console.error('Geocoding error:', err);
+		}
+	};
 
 	// const fetchPriceEstimate = async () => {
 	// 	const { price, area, address } = formValues;
@@ -301,15 +329,34 @@ const PostRoomPage = () => {
 
 									<div>
 										<Label className='block mb-2'>Địa chỉ *</Label>
-										<Input
-											placeholder='Nhập địa chỉ chi tiết (số nhà, đường, phường, quận)'
-											{...register('address')}
-											className={errors.address ? 'border-red-500' : ''}
-										/>
+										<div className='flex gap-2'>
+											<Input
+												placeholder='Nhập địa chỉ chi tiết (số nhà, đường, phường, quận)'
+												{...register('address')}
+												onBlur={(e) => handleGeocode(e.target.value)}
+												className={
+													errors.address ? 'border-red-500 flex-1' : 'flex-1'
+												}
+											/>
+											<Button
+												type='button'
+												variant='secondary'
+												onClick={() => handleGeocode(getValues('address'))}>
+												🔍 Định vị
+											</Button>
+										</div>
 										{errors.address && (
 											<p className='text-sm text-red-500 mt-1'>
 												{errors.address.message}
 											</p>
+										)}
+										{coords && (
+											<div className='mt-4 animate-in fade-in slide-in-from-top-2 duration-300'>
+												<Label className='text-xs text-muted-foreground mb-2 block font-medium uppercase'>
+													Xem trước vị trí:
+												</Label>
+												<PostMapPreview lat={coords.lat} lng={coords.lng} />
+											</div>
 										)}
 									</div>
 
@@ -647,6 +694,18 @@ const PostRoomPage = () => {
 													<p className='whitespace-pre-line text-sm'>
 														{formData.rules}
 													</p>
+												</div>
+											</>
+										)}
+
+										{coords && (
+											<>
+												<Separator />
+												<div>
+													<span className='text-sm text-muted-foreground block mb-3 font-semibold'>
+														Bản đồ vị trí
+													</span>
+													<PostMapPreview lat={coords.lat} lng={coords.lng} />
 												</div>
 											</>
 										)}

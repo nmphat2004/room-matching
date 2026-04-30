@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable } from '@nestjs/common';
 
 // Trọng số + bán kính tối ưu cho từng loại POI
@@ -149,37 +145,155 @@ export class NeighborhoodService {
       [out:json][timeout:15];
       (
         node["amenity"="school"](around:${radius},${lat},${lng});
+        way["amenity"="school"](around:${radius},${lat},${lng});
+        relation["amenity"="school"](around:${radius},${lat},${lng});
+
         node["amenity"="hospital"](around:${radius},${lat},${lng});
+        way["amenity"="hospital"](around:${radius},${lat},${lng});
+        relation["amenity"="hospital"](around:${radius},${lat},${lng});
+
         node["amenity"="clinic"](around:${radius},${lat},${lng});
+        way["amenity"="clinic"](around:${radius},${lat},${lng});
+        relation["amenity"="clinic"](around:${radius},${lat},${lng});
+
         node["shop"="supermarket"](around:${radius},${lat},${lng});
+        way["shop"="supermarket"](around:${radius},${lat},${lng});
+        relation["shop"="supermarket"](around:${radius},${lat},${lng});
+
         node["amenity"="restaurant"](around:500,${lat},${lng});
+        way["amenity"="restaurant"](around:500,${lat},${lng});
+        relation["amenity"="restaurant"](around:500,${lat},${lng});
+
         node["amenity"="bank"](around:${radius},${lat},${lng});
+        way["amenity"="bank"](around:${radius},${lat},${lng});
+        relation["amenity"="bank"](around:${radius},${lat},${lng});
+
         node["highway"="bus_stop"](around:500,${lat},${lng});
+        way["highway"="bus_stop"](around:500,${lat},${lng});
+        relation["highway"="bus_stop"](around:500,${lat},${lng});
+
         node["amenity"="marketplace"](around:${radius},${lat},${lng});
+        way["amenity"="marketplace"](around:${radius},${lat},${lng});
+        relation["amenity"="marketplace"](around:${radius},${lat},${lng});
+
         node["leisure"="park"](around:${radius},${lat},${lng});
+        way["leisure"="park"](around:${radius},${lat},${lng});
+        relation["leisure"="park"](around:${radius},${lat},${lng});
       );
-      out body;
+      out body center;
     `;
 
     try {
-      const res = await fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query,
-        headers: { 'Content-Type': 'text/plain' },
-      });
-      const data = await res.json();
+      const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+      ];
 
-      return (data.elements || [])
+      let data: any = null;
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            body: query,
+            headers: { 'Content-Type': 'text/plain' },
+          });
+          if (!res.ok) continue;
+          data = await res.json();
+          if (data?.elements?.length) break;
+        } catch {
+          continue;
+        }
+      }
+
+      const overpassPois = (data?.elements || [])
         .map((el: any) => ({
           name:
             el.tags?.['name:vi'] || el.tags?.name || this.mapTypeName(el.tags),
           type: this.mapType(el.tags),
-          distance: Math.round(this.haversine(lat, lng, el.lat, el.lon)),
+          distance: Math.round(
+            this.haversine(
+              lat,
+              lng,
+              el.lat ?? el.center?.lat,
+              el.lon ?? el.center?.lon,
+            ),
+          ),
         }))
-        .filter((p: any) => p.type !== 'other')
+        .filter(
+          (p: any) =>
+            p.type !== 'other' &&
+            Number.isFinite(p.distance) &&
+            p.distance >= 0,
+        )
         .sort((a: any, b: any) => a.distance - b.distance);
+
+      if (overpassPois.length > 0) {
+        return overpassPois;
+      }
+
+      // Fallback when Overpass is rate-limited or returns empty.
+      return this.fetchPOIsFromNominatim(lat, lng, radius);
     } catch (err) {
       console.error('Overpass API error:', err);
+      return this.fetchPOIsFromNominatim(lat, lng, radius);
+    }
+  }
+
+  private async fetchPOIsFromNominatim(
+    lat: number,
+    lng: number,
+    radius: number,
+  ) {
+    const deltaLat = radius / 111_320;
+    const deltaLng = radius / (111_320 * Math.cos((lat * Math.PI) / 180));
+    const left = lng - deltaLng;
+    const right = lng + deltaLng;
+    const top = lat + deltaLat;
+    const bottom = lat - deltaLat;
+    const viewbox = `${left},${top},${right},${bottom}`;
+
+    const searchTerms: Record<string, string> = {
+      school: 'school',
+      hospital: 'hospital',
+      supermarket: 'supermarket',
+      restaurant: 'restaurant',
+      bank: 'bank',
+      bus_station: 'bus stop',
+      market: 'market',
+      park: 'park',
+    };
+
+    try {
+      const responses = await Promise.all(
+        Object.entries(searchTerms).map(async ([type, q]) => {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+              q,
+            )}&bounded=1&limit=6&viewbox=${encodeURIComponent(viewbox)}`,
+            {
+              headers: {
+                'User-Agent': 'RoomMatchingApp/1.0',
+              },
+            },
+          );
+          if (!res.ok) return [];
+          const data = await res.json();
+          return (data || []).map((item: any) => ({
+            name: item.name || item.display_name || this.mapTypeName({}),
+            type,
+            distance: Math.round(
+              this.haversine(lat, lng, Number(item.lat), Number(item.lon)),
+            ),
+          }));
+        }),
+      );
+
+      return responses
+        .flat()
+        .filter((p: any) => Number.isFinite(p.distance) && p.distance <= radius)
+        .sort((a: any, b: any) => a.distance - b.distance);
+    } catch (err) {
+      console.error('Nominatim POI fallback error:', err);
       return [];
     }
   }

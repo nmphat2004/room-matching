@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/axios';
@@ -47,9 +46,29 @@ export default function SeasonalWidget({ district }: { district?: string }) {
 			</h3>
 
 			{/* Lời khuyên hiện tại */}
-			<div className='bg-blue-50 rounded-lg p-3 text-sm text-blue-800'>
-				{data.currentAdvice}
+			<div className='bg-blue-50 rounded-lg p-3 text-sm text-blue-800 relative overflow-hidden'>
+				<div className='flex items-start gap-2'>
+					<span className='mt-0.5'>💡</span>
+					<div className='flex flex-col gap-1'>
+						<span className='font-semibold text-[10px] uppercase tracking-wider text-blue-500 opacity-70 flex items-center gap-1'>
+							Lời khuyên từ Hệ thống
+						</span>
+						{data.currentAdvice}
+					</div>
+				</div>
 			</div>
+
+			{/* AI Powered Advice */}
+			{data.aiAdvice && (
+				<div className='bg-purple-50 rounded-lg p-3 text-sm text-purple-800 border border-purple-100 flex flex-col gap-1'>
+					<span className='font-semibold text-[10px] uppercase tracking-wider text-purple-500 opacity-70 flex items-center gap-1'>
+						✨ Tư vấn thông minh (AI)
+					</span>
+					<div className='italic leading-relaxed'>
+						&quot;{data.aiAdvice}&quot;
+					</div>
+				</div>
+			)}
 
 			{/* 12 tháng bar chart */}
 			<div>

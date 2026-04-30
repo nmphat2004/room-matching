@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SeasonalService } from './seasonal.service';
 import { NeighborhoodService } from './neighborhood.service';
 import { PriceEstimatorService } from './price-estimator.service';
+import { GeocodingService } from './geocoding.service';
 
 @ApiTags('Analytics')
 @Controller('analytics')
@@ -11,6 +12,7 @@ export class AnalyticsController {
     private seasonalService: SeasonalService,
     private neighborhoodService: NeighborhoodService,
     private priceEstimatorService: PriceEstimatorService,
+    private geocodingService: GeocodingService,
   ) {}
 
   // GET /analytics/seasonal?district=Quận 1
@@ -44,5 +46,11 @@ export class AnalyticsController {
       address,
       currentPrice ? parseFloat(currentPrice) : undefined,
     );
+  }
+
+  @Get('geocode')
+  @ApiOperation({ summary: 'Resolve address to coordinates' })
+  async geocode(@Query('address') address: string) {
+    return this.geocodingService.geocode(address);
   }
 }
