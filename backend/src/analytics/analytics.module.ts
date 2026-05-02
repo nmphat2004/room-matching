@@ -20,6 +20,7 @@ import { GeocodingService } from './geocoding.service';
     NeighborhoodService,
     PriceEstimatorService,
     GeocodingService,
+    AiService,
   ],
 })
 export class AnalyticsModule {}

@@ -7,12 +7,14 @@ import {
 import { CreateReviewDto } from './dto/review.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { FakeReviewService } from 'src/fraud/fake-review.service';
+import { AiService } from '../analytics/ai.service';
 
 @Injectable()
 export class ReviewsService {
   constructor(
     private prisma: PrismaService,
     private fakeReviewService: FakeReviewService,
+    private aiService: AiService,
   ) {}
 
   async findByRoom(roomId: string, page: number = 1, limit: number = 10) {
@@ -148,31 +150,11 @@ export class ReviewsService {
 
   private async analyzeSentiment(reviewId: string, comment: string) {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Phân tích cảm xúc của đánh giá phòng trọ sau và trả về 1 trong 3 từ: "positive", "negative", "neutral". Chỉ trả về 1 từ duy nhất, không giải thích.
-                
-Đánh giá: "${comment}"`,
-                  },
-                ],
-              },
-            ],
-          }),
-        },
-      );
+      const prompt = `Phân tích cảm xúc của đánh giá phòng trọ sau và trả về 1 trong 3 từ: "positive", "negative", "neutral". Chỉ trả về 1 từ duy nhất, không giải thích.      
+Đánh giá: "${comment}"`;
 
-      const data = await response.json();
-      const sentiment = data.candidates?.[0]?.contents?.parts?.[0]?.text
-        ?.trim()
-        ?.toLowerCase();
+      const result = await this.aiService.generateText(prompt);
+      const sentiment = result.trim().toLowerCase();
 
       if (['positive', 'negative', 'neutral'].includes(sentiment)) {
         await this.prisma.review.update({

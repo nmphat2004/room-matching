@@ -19,12 +19,13 @@ import { formatRelativeTime } from '@/lib/time-format';
 import { getSavedRoomStatus, saveRoom, unsaveRoom } from '@/lib/api/user.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Heart, MapPin, MessageCircle } from 'lucide-react';
+import { Eye, Heart, MapPin, MessageCircle, Flag, BadgeCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
+import ReportDialog from '@/components/room/report-dialog';
 
 const RoomMap = dynamic(() => import('@/components/room/room-map'), {
 	ssr: false,
@@ -47,6 +48,7 @@ const RoomDetailPage = () => {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [phoneRevealed, setPhoneRevealed] = useState(false);
+	const [showReportDialog, setShowReportDialog] = useState(false);
 
 	const { data: room, isLoading } = useQuery({
 		queryKey: ['room', id],
@@ -318,7 +320,7 @@ const RoomDetailPage = () => {
 
 						<div className='space-y-4'>
 							<h2 className='text-xl font-bold'>Bản đồ vị trí</h2>
-							<RoomMap address={room.address} />
+							<RoomMap address={room.address} lat={room.lat} lng={room.lng} />
 						</div>
 
 						{isGeocoding ?
@@ -483,6 +485,12 @@ const RoomDetailPage = () => {
 									</div>
 									<div>
 										<h3 className='text-xl font-bold'>{room.owner.fullName}</h3>
+										{room.owner.isVerified && (
+											<div className='flex items-center gap-1.5 mt-1'>
+												<BadgeCheck className='w-4 h-4 text-green-500' />
+												<span className='text-sm font-semibold text-green-600'>Môi giới xác thực</span>
+											</div>
+										)}
 										<p className='text-xs text-muted-foreground'>
 											Thành viên từ{' '}
 											{new Date(room.owner.createdAt).toLocaleDateString()}
@@ -515,7 +523,7 @@ const RoomDetailPage = () => {
 										</Button>
 									</Link>
 
-									<div className='pt-4 items-center justify-center flex'>
+									<div className='pt-4 items-center justify-center flex gap-3'>
 										<Button
 											variant='ghost'
 											className={`rounded-xl text-xs font-bold border transition-colors ${saved ? 'border-red-200 bg-red-50 text-red-600' : 'hover:bg-secondary'}`}
@@ -533,6 +541,15 @@ const RoomDetailPage = () => {
 											/>
 											{saved ? 'ĐÃ LƯU' : 'LƯU PHÒNG'}
 										</Button>
+										{user && user.id !== room.owner.id && (
+										<Button
+											variant='ghost'
+											className='rounded-xl text-xs font-bold border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors'
+											onClick={() => setShowReportDialog(true)}>
+											<Flag className='w-4 h-4 mr-2' />
+											BÁO XẤU
+										</Button>
+										)}
 									</div>
 								</div>
 							</div>
@@ -541,6 +558,9 @@ const RoomDetailPage = () => {
 					</div>
 				</div>
 			</div>
+			{showReportDialog && (
+				<ReportDialog roomId={room.id} onClose={() => setShowReportDialog(false)} />
+			)}
 		</div>
 	);
 };

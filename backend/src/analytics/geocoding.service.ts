@@ -3,77 +3,39 @@ import axios from 'axios';
 
 @Injectable()
 export class GeocodingService {
-  private readonly NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+  private extractCoordsFromUrl(
+    url: string,
+  ): { lat: number; lng: number } | null {
+    // Regex tìm tọa độ dạng @10.123,106.123 hoặc /place/10.123,106.123
+    const match =
+      url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/place\/(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
 
-  private normalizeAddress(address: string): string {
-    return address
-      .replace(/\bTP\.?\s*HCM\b/gi, 'Ho Chi Minh City')
-      .replace(/\bTP\.?\s*Hồ\s*Chí\s*Minh\b/gi, 'Ho Chi Minh City')
-      .replace(/\bQ\.?\s*(\d+)\b/gi, 'Quận $1')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private extractDistrict(address: string): string | null {
-    const chunks = address
-      .split(',')
-      .map((item) => item.trim())
-      .filter(Boolean);
-    const district = chunks.find((chunk) =>
-      /quận\s*\d+|huyện|thủ đức|district/i.test(chunk),
-    );
-    return district || null;
-  }
-
-  private async geocodeQuery(query: string): Promise<{ lat: number; lng: number } | null> {
-    const response = await axios.get(this.NOMINATIM_URL, {
-      params: {
-        q: query,
-        format: 'json',
-        limit: 1,
-        addressdetails: 1,
-      },
-      headers: {
-        'User-Agent': 'RoomMatchingApp/1.0',
-      },
-    });
-
-    if (response.data && response.data.length > 0) {
-      const { lat, lon } = response.data[0];
-      const parsedLat = parseFloat(lat);
-      const parsedLng = parseFloat(lon);
-
-      if (Number.isFinite(parsedLat) && Number.isFinite(parsedLng)) {
-        return { lat: parsedLat, lng: parsedLng };
-      }
+    if (match) {
+      return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
     }
-
     return null;
   }
 
-  async geocode(address: string): Promise<{ lat: number; lng: number } | null> {
-    if (!address) return null;
-
-    const normalized = this.normalizeAddress(address);
-    const district = this.extractDistrict(normalized);
-    const candidateQueries = [
-      `${address}, Vietnam`,
-      `${normalized}, Vietnam`,
-      district ? `${district}, Ho Chi Minh City, Vietnam` : null,
-      'Ho Chi Minh City, Vietnam',
-    ].filter(Boolean) as string[];
-
+  async resolveGoogleMapsUrl(
+    url: string,
+  ): Promise<{ lat: number; lng: number } | null> {
     try {
-      for (const query of candidateQueries) {
-        const result = await this.geocodeQuery(query);
-        if (result) {
-          return result;
-        }
+      let targetUrl = url;
+
+      // Nếu là link rút gọn maps.app.goo.gl hoặc goo.gl/maps
+      if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
+        const response = await axios.get(url, {
+          maxRedirects: 5,
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+        });
+        targetUrl = response.request.res.responseUrl || url;
       }
 
-      return null;
-    } catch (error: any) {
-      console.error('Geocoding Error:', error?.message || error);
+      return this.extractCoordsFromUrl(targetUrl);
+    } catch (error) {
+      console.error('Error resolving Google Maps URL:', error);
       return null;
     }
   }

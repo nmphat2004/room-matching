@@ -42,7 +42,13 @@ const LoginPage = () => {
 			const res = await login(data);
 			setAuth(res.user, res.accessToken, res.refreshToken);
 			toast.success(`Xin chào, ${res.user.fullName}!`);
-			router.push('/');
+
+			// Điều hướng dựa trên vai trò
+			if (res.user.role === 'ADMIN') {
+				router.push('/admin/dashboard');
+			} else {
+				router.push('/');
+			}
 		} catch (error: any) {
 			toast.error(error.response?.data?.message || 'Đăng nhập thất bại');
 		} finally {
@@ -51,7 +57,13 @@ const LoginPage = () => {
 	};
 
 	useEffect(() => {
-		if (user) router.push('/');
+		if (user) {
+			if (user.role === 'ADMIN') {
+				router.push('/admin/dashboard');
+			} else {
+				router.push('/');
+			}
+		}
 	}, [user, router]);
 
 	if (isAuthLoading || user) return null;

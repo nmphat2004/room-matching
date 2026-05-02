@@ -62,17 +62,28 @@ const PostRoomPage = () => {
 	const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
 		null,
 	);
+	const [isGeocoding, setIsGeocoding] = useState(false);
 
 	const handleGeocode = async (address: string) => {
-		if (!address || address.length < 8) return;
+		if (!address || address.length < 5) return;
 		try {
+			setIsGeocoding(true);
 			const res = await api.get('/analytics/geocode', { params: { address } });
 			if (res.data) {
 				setCoords(res.data);
-				toast.success('Đã xác định vị trí trên bản đồ!');
+				toast.success(
+					'Đã xác định vị trí! Bạn có thể kéo ghim để chỉnh sửa chính xác hơn.',
+				);
+			} else {
+				toast.error(
+					'Không tìm thấy vị trí chính xác. Vui lòng nhập địa chỉ chi tiết hơn.',
+				);
 			}
 		} catch (err) {
 			console.error('Geocoding error:', err);
+			toast.error('Lỗi khi định vị. Vui lòng thử lại.');
+		} finally {
+			setIsGeocoding(false);
 		}
 	};
 
@@ -131,21 +142,23 @@ const PostRoomPage = () => {
 		{ value: 'room', label: 'Phòng trọ', icon: '🏠' },
 		{ value: 'house', label: 'Nhà riêng', icon: '🏡' },
 		{ value: 'shared', label: 'Ở ghép', icon: '👥' },
-		{ value: 'shophouse', label: 'Mặt bằng', icon: '🏪' },
 		{ value: 'apartment', label: 'Căn hộ chung cư', icon: '🏢' },
 		{ value: 'mini', label: 'Căn hộ mini', icon: '🏘️' },
 		{ value: 'service', label: 'Căn hộ dịch vụ', icon: '🏗️' },
 	];
 
 	const amenitiesList = [
-		{ value: 'wifi', label: 'WiFi' },
-		{ value: 'ac', label: 'Điều hòa' },
-		{ value: 'parking', label: 'Bãi đỗ xe' },
-		{ value: 'elevator', label: 'Thang máy' },
-		{ value: 'bathroom', label: 'WC riêng' },
-		{ value: 'kitchen', label: 'Bếp' },
-		{ value: 'security', label: 'An ninh' },
-		{ value: 'washing', label: 'Máy giặt' },
+		{ value: 'Điều hòa', label: 'AirVent' },
+		{ value: 'Giữ xe', label: 'Car' },
+		{ value: 'Thang máy', label: 'Building2' },
+		{ value: 'An ninh', label: 'Shield' },
+		{ value: 'Kệ bếp', label: 'ChefHat' },
+		{ value: 'Máy giặt', label: 'WashingMachine' },
+		{ value: 'Đầy đủ nội thất', label: 'Sofa' },
+		{ value: 'Có gác', label: 'ArrowUp' },
+		{ value: 'Tủ lạnh', label: 'Refrigerator' },
+		{ value: 'Không chung chủ', label: 'UserX' },
+		{ value: 'Giờ giấc tự do', label: 'Clock' },
 	];
 
 	const toggleAmenity = (amenity: string) => {
@@ -204,6 +217,8 @@ const PostRoomPage = () => {
 				rule: data.rules,
 				area: data.area,
 				floor: data.floor || 0,
+				lat: coords?.lat,
+				lng: coords?.lng,
 				imageUrls,
 				primaryImageUrl: imageUrls[0],
 				amenityIds: [],
@@ -329,22 +344,48 @@ const PostRoomPage = () => {
 
 									<div>
 										<Label className='block mb-2'>Địa chỉ *</Label>
-										<div className='flex gap-2'>
+										<div className='flex gap-2 mb-3'>
 											<Input
 												placeholder='Nhập địa chỉ chi tiết (số nhà, đường, phường, quận)'
 												{...register('address')}
-												onBlur={(e) => handleGeocode(e.target.value)}
 												className={
 													errors.address ? 'border-red-500 flex-1' : 'flex-1'
 												}
 											/>
-											<Button
-												type='button'
-												variant='secondary'
-												onClick={() => handleGeocode(getValues('address'))}>
-												🔍 Định vị
-											</Button>
 										</div>
+
+										{/* Feature: Paste Google Maps Link */}
+										<div className='p-4 bg-blue-50/50 border border-blue-100 rounded-xl mb-4'>
+											<Label className='text-xs font-bold text-blue-700 uppercase mb-2 block'>
+												Dán link Google Maps
+											</Label>
+											<div className='flex gap-2'>
+												<Input
+													id='gmaps-url'
+													placeholder='Dán liên kết từ Google Maps vào đây (ví dụ: https://maps.app.goo.gl/...)'
+													className='bg-white border-blue-200 focus:border-blue-500'
+												/>
+												<Button
+													type='button'
+													variant='default'
+													className='bg-blue-600 hover:bg-blue-700'
+													onClick={() => {
+														const url = (
+															document.getElementById(
+																'gmaps-url',
+															) as HTMLInputElement
+														).value;
+														if (url) handleGeocode(url);
+													}}>
+													Áp dụng
+												</Button>
+											</div>
+											<p className='text-[10px] text-blue-500 mt-2 italic'>
+												* Mở Google Maps, chọn vị trí nhà bạn, nhấn Chia sẻ{' '}
+												{`->`} Sao chép liên kết rồi dán vào đây.
+											</p>
+										</div>
+
 										{errors.address && (
 											<p className='text-sm text-red-500 mt-1'>
 												{errors.address.message}
@@ -355,7 +396,11 @@ const PostRoomPage = () => {
 												<Label className='text-xs text-muted-foreground mb-2 block font-medium uppercase'>
 													Xem trước vị trí:
 												</Label>
-												<PostMapPreview lat={coords.lat} lng={coords.lng} />
+												<PostMapPreview
+													lat={coords.lat}
+													lng={coords.lng}
+													onChange={(lat, lng) => setCoords({ lat, lng })}
+												/>
 											</div>
 										)}
 									</div>
@@ -514,7 +559,7 @@ const PostRoomPage = () => {
 													key={amenity.value}
 													onClick={() => toggleAmenity(amenity.value)}
 													className={`p-3 border rounded-lg transition-all ${formData.amenities?.includes(amenity.value) ? 'border-primary bg-primary/5' : 'border-border hover:bg-secondary'}`}>
-													{amenity.label}
+													{amenity.value}
 												</Button>
 											))}
 										</div>
@@ -705,7 +750,11 @@ const PostRoomPage = () => {
 													<span className='text-sm text-muted-foreground block mb-3 font-semibold'>
 														Bản đồ vị trí
 													</span>
-													<PostMapPreview lat={coords.lat} lng={coords.lng} />
+													<PostMapPreview
+														lat={coords.lat}
+														lng={coords.lng}
+														onChange={(lat, lng) => setCoords({ lat, lng })}
+													/>
 												</div>
 											</>
 										)}

@@ -38,6 +38,7 @@ export interface Room {
 		fullName: string;
 		phone?: number;
 		avatarUrl?: string;
+		isVerified?: boolean;
 		createdAt: string;
 	};
 	images: RoomImage[];

@@ -49,8 +49,15 @@ export class AnalyticsController {
   }
 
   @Get('geocode')
-  @ApiOperation({ summary: 'Resolve address to coordinates' })
+  @ApiOperation({
+    summary: 'Resolve address or Google Maps URL to coordinates',
+  })
   async geocode(@Query('address') address: string) {
-    return this.geocodingService.geocode(address);
+    if (
+      address.includes('google.com/maps') ||
+      address.includes('goo.gl/maps')
+    ) {
+      return this.geocodingService.resolveGoogleMapsUrl(address);
+    }
   }
 }

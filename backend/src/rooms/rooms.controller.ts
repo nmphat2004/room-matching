@@ -71,4 +71,16 @@ export class RoomsController {
   remove(@Param('id') id: string, @Req() req: any) {
     return this.roomsService.remove(id, req.user.id, req.user.role);
   }
+
+  @Post(':id/report')
+  @UseGuards(JwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Report a room (báo xấu)' })
+  reportRoom(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() body: { reason: string },
+  ) {
+    return this.roomsService.reportRoom(id, req.user.id, body.reason);
+  }
 }

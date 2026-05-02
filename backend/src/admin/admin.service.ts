@@ -1,17 +1,37 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { FakeListingService } from '../fraud/fake-listing.service';
+import { FakeReviewService } from '../fraud/fake-review.service';
 
 @Injectable()
 export class AdminService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private fakeListingService: FakeListingService,
+    private fakeReviewService: FakeReviewService,
+  ) {}
 
   async getStats() {
-    const [totalUsers, totalRooms, totalReviews] = await Promise.all([
+    const [
+      totalUsers,
+      totalRooms,
+      totalReviews,
+      pendingReports,
+      flaggedReviews,
+    ] = await Promise.all([
       this.prisma.user.count({ where: { isDeleted: false } }),
       this.prisma.room.count(),
       this.prisma.review.count(),
+      this.prisma.report.count({ where: { status: 'pending' } }),
+      this.prisma.review.count({ where: { isVerified: false } }),
     ]);
-    return { totalUsers, totalRooms, totalReviews };
+    return {
+      totalUsers,
+      totalRooms,
+      totalReviews,
+      pendingReports,
+      flaggedReviews,
+    };
   }
 
   async getUsers() {
@@ -23,6 +43,7 @@ export class AdminService {
         role: true,
         phone: true,
         isDeleted: true,
+        isVerified: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -39,6 +60,16 @@ export class AdminService {
     });
   }
 
+  async toggleUserVerification(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('User not found');
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isVerified: !user.isVerified },
+    });
+  }
+
   async getRooms(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
 
@@ -49,6 +80,7 @@ export class AdminService {
         orderBy: { createdAt: 'desc' },
         include: {
           owner: { select: { fullName: true, email: true } },
+          images: { where: { isPrimary: true }, take: 1 },
         },
       }),
       this.prisma.room.count(),
@@ -76,12 +108,12 @@ export class AdminService {
     return this.prisma.room.delete({ where: { id } });
   }
 
+  async analyzeRoomFraud(roomId: string) {
+    return this.fakeListingService.analyzeRoom(roomId);
+  }
+
   async getReviews(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-
-    // We fetch ratings to show details. We could also show fraud data here if stored.
-    // Right now the fraud score/isVerified is stored in `isVerified` ? Review doesn't have fraudScore in schema?
-    // Wait, let me check Prisma schema... Review model has 'isVerified'.
 
     const [reviews, total] = await Promise.all([
       this.prisma.review.findMany({
@@ -89,8 +121,8 @@ export class AdminService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          reviewer: { select: { fullName: true, email: true } },
-          room: { select: { title: true } },
+          reviewer: { select: { id: true, fullName: true, email: true } },
+          room: { select: { id: true, title: true } },
         },
       }),
       this.prisma.review.count(),
@@ -107,6 +139,20 @@ export class AdminService {
     };
   }
 
+  async analyzeReviewFraud(reviewId: string) {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+    if (!review) throw new NotFoundException('Review not found');
+
+    return this.fakeReviewService.analyze(
+      review.reviewerId,
+      review.roomId,
+      review.rating,
+      review.comment || '',
+    );
+  }
+
   async changeReviewStatus(id: string, isVerified: boolean) {
     return this.prisma.review.update({
       where: { id },
@@ -116,5 +162,43 @@ export class AdminService {
 
   async removeReview(id: string) {
     return this.prisma.review.delete({ where: { id } });
+  }
+
+  // --- Reports Management ---
+  async getReports(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const [reports, total] = await Promise.all([
+      this.prisma.report.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          room: { select: { id: true, title: true } },
+          reporter: { select: { id: true, fullName: true, email: true } },
+        },
+      }),
+      this.prisma.report.count(),
+    ]);
+
+    return {
+      data: reports,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async updateReportStatus(id: string, status: string) {
+    const report = await this.prisma.report.findUnique({ where: { id } });
+    if (!report) throw new NotFoundException('Report not found');
+
+    return this.prisma.report.update({
+      where: { id },
+      data: { status },
+    });
   }
 }

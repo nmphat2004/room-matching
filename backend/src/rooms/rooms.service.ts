@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   ForbiddenException,
   Injectable,
@@ -6,26 +5,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateRoomDto, SearchRoomDto, UpdateRoomDto } from './dto/room.dto';
-import { GeocodingService } from '../analytics/geocoding.service';
 
 @Injectable()
 export class RoomsService {
-  constructor(
-    private prisma: PrismaService,
-    private geocodingService: GeocodingService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async create(ownerId: string, dto: CreateRoomDto) {
-    let { lat, lng } = dto;
-
-    // Tự động lấy tọa độ nếu chưa có
-    if ((!lat || !lng) && dto.address) {
-      const coords = await this.geocodingService.geocode(dto.address);
-      if (coords) {
-        lat = coords.lat;
-        lng = coords.lng;
-      }
-    }
+    const { lat, lng } = dto;
 
     const room = await this.prisma.room.create({
       data: {
@@ -77,20 +63,11 @@ export class RoomsService {
 
   async update(id: string, ownerId: string, dto: UpdateRoomDto) {
     const { amenityIds, imageUrls, ...rest } = dto;
-    let { lat, lng } = rest;
+    const { lat, lng } = rest;
 
     const room = await this.prisma.room.findUnique({ where: { id } });
     if (!room) throw new NotFoundException('Room not found');
     if (room.ownerId !== ownerId) throw new ForbiddenException('Not your room');
-
-    // Tự động cập nhật tọa độ nếu địa chỉ thay đổi mà ko có tọa độ mới
-    if (rest.address && rest.address !== room.address && (!lat || !lng)) {
-      const coords = await this.geocodingService.geocode(rest.address);
-      if (coords) {
-        lat = coords.lat;
-        lng = coords.lng;
-      }
-    }
 
     return this.prisma.room.update({
       where: { id },
@@ -147,6 +124,7 @@ export class RoomsService {
             fullName: true,
             phone: true,
             avatarUrl: true,
+            isVerified: true,
             createdAt: true,
           },
         },
@@ -287,6 +265,35 @@ export class RoomsService {
   async findAllAmenities() {
     return this.prisma.amenity.findMany({
       orderBy: { name: 'asc' },
+    });
+  }
+
+  async reportRoom(roomId: string, reporterId: string, reason: string) {
+    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) throw new NotFoundException('Room not found');
+
+    // Chủ trọ không được tự báo xấu phòng của mình
+    if (room.ownerId === reporterId) {
+      throw new ForbiddenException(
+        'Bạn không thể báo xấu phòng của chính mình',
+      );
+    }
+
+    // Kiểm tra xem user đã report phòng này chưa
+    const existing = await this.prisma.report.findFirst({
+      where: { roomId, reporterId },
+    });
+    if (existing) {
+      throw new ForbiddenException('Bạn đã báo cáo phòng này rồi');
+    }
+
+    return this.prisma.report.create({
+      data: {
+        roomId,
+        reporterId,
+        reason,
+        status: 'pending',
+      },
     });
   }
 }
