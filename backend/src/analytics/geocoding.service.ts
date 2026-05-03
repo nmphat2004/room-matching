@@ -3,17 +3,30 @@ import axios from 'axios';
 
 @Injectable()
 export class GeocodingService {
-  private extractCoordsFromUrl(
-    url: string,
+  private extractCoordsFromText(
+    text: string,
   ): { lat: number; lng: number } | null {
-    // Regex tìm tọa độ dạng @10.123,106.123 hoặc /place/10.123,106.123
-    const match =
-      url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-      url.match(/place\/(-?\d+\.\d+),(-?\d+\.\d+)/) ||
-      url.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+    // Thử nhiều pattern khác nhau để tìm tọa độ
+    const patterns = [
+      /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /place\/(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+      /center=(-?\d+\.\d+)%2C(-?\d+\.\d+)/,
+      /ll=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /q=(-?\d+\.\d+),(-?\d+\.\d+)/,
+      /destination=(-?\d+\.\d+),(-?\d+\.\d+)/,
+    ];
 
-    if (match) {
-      return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const lat = parseFloat(match[1]);
+        const lng = parseFloat(match[2]);
+        // Validate tọa độ hợp lệ (Việt Nam: lat 8-24, lng 102-110)
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return { lat, lng };
+        }
+      }
     }
     return null;
   }
@@ -22,20 +35,77 @@ export class GeocodingService {
     url: string,
   ): Promise<{ lat: number; lng: number } | null> {
     try {
-      let targetUrl = url;
+      // Bước 1: Thử trích xuất tọa độ trực tiếp từ URL
+      const directResult = this.extractCoordsFromText(url);
+      if (directResult) return directResult;
 
-      // Nếu là link rút gọn maps.app.goo.gl hoặc goo.gl/maps
-      if (url.includes('maps.app.goo.gl') || url.includes('goo.gl/maps')) {
-        const response = await axios.get(url, {
-          maxRedirects: 5,
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-        });
-        targetUrl = response.request.res.responseUrl || url;
+      // Bước 2: Nếu là link rút gọn, follow redirect để lấy URL đầy đủ
+      const response = await axios.get(url, {
+        maxRedirects: 10,
+        timeout: 10000,
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        validateStatus: (status) => status < 400,
+      });
+
+      // Thử lấy URL cuối cùng sau redirect
+      const finalUrl =
+        response.request?.res?.responseUrl ||
+        response.request?.responseURL ||
+        response.request?._redirectable?._currentUrl ||
+        url;
+
+      const redirectResult = this.extractCoordsFromText(finalUrl);
+      if (redirectResult) return redirectResult;
+
+      // Bước 3: Nếu vẫn không tìm được, tìm trong body HTML
+      if (typeof response.data === 'string') {
+        const bodyResult = this.extractCoordsFromText(response.data);
+        if (bodyResult) return bodyResult;
       }
 
-      return this.extractCoordsFromUrl(targetUrl);
+      return null;
     } catch (error) {
-      console.error('Error resolving Google Maps URL:', error);
+      console.error('Error resolving Google Maps URL:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Geocode plain text address using OpenStreetMap Nominatim API
+   */
+  async geocodeAddress(
+    address: string,
+  ): Promise<{ lat: number; lng: number } | null> {
+    try {
+      const response = await axios.get(
+        'https://nominatim.openstreetmap.org/search',
+        {
+          params: {
+            q: address,
+            format: 'json',
+            limit: 1,
+            countrycodes: 'vn',
+          },
+          headers: {
+            'User-Agent': 'RoomMatchingApp/1.0',
+          },
+          timeout: 8000,
+        },
+      );
+
+      if (response.data && response.data.length > 0) {
+        return {
+          lat: parseFloat(response.data[0].lat),
+          lng: parseFloat(response.data[0].lon),
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error.message);
       return null;
     }
   }

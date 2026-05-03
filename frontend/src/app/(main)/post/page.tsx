@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, GripVertical, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
@@ -59,6 +59,7 @@ const PostRoomPage = () => {
 	>([]);
 
 	const [priceEstimate, setPriceEstimate] = useState<any>(null);
+	const [isPriceLoading, setIsPriceLoading] = useState(false);
 	const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
 		null,
 	);
@@ -87,28 +88,6 @@ const PostRoomPage = () => {
 		}
 	};
 
-	// const fetchPriceEstimate = async () => {
-	// 	const { price, area, address } = formValues;
-	// 	if (!price || !area || !address) return;
-	// 	try {
-	// 		const res = await api.get('/analytics/price-estimate', {
-	// 			params: {
-	// 				area,
-	// 				amenityCount: selectedAmenities.length,
-	// 				floor: formValues.floor || 1,
-	// 				address,
-	// 				currentPrice: price,
-	// 			},
-	// 		});
-	// 		setPriceEstimate(res.data);
-	// 	} catch {}
-	// };
-
-	// // Gọi khi price/area thay đổi (debounce 800ms):
-	// useEffect(() => {
-	// 	const timer = setTimeout(fetchPriceEstimate, 800);
-	// 	return () => clearTimeout(timer);
-	// }, [formValues.price, formValues.area, formValues.address]);
 
 	useLayoutEffect(() => {
 		if (!authLoading && user?.role !== 'LANDLORD') {
@@ -130,6 +109,41 @@ const PostRoomPage = () => {
 	});
 
 	const formData = watch();
+
+	// Dự báo giá phòng dựa trên thông tin đã nhập
+	const fetchPriceEstimate = async () => {
+		const price = formData.price;
+		const area = formData.area;
+		const address = formData.address;
+		if (!price || !area || !address || address.length < 5) {
+			setPriceEstimate(null);
+			return;
+		}
+		try {
+			setIsPriceLoading(true);
+			const res = await api.get('/analytics/price-estimate', {
+				params: {
+					area,
+					amenityCount: formData.amenities?.length || 0,
+					floor: formData.floor || 1,
+					address,
+					currentPrice: price,
+				},
+			});
+			setPriceEstimate(res.data);
+		} catch {
+			setPriceEstimate(null);
+		} finally {
+			setIsPriceLoading(false);
+		}
+	};
+
+	// Gọi khi price/area/address thay đổi (debounce 1000ms)
+	useEffect(() => {
+		const timer = setTimeout(fetchPriceEstimate, 1000);
+		return () => clearTimeout(timer);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [formData.price, formData.area, formData.address, formData.amenities?.length, formData.floor]);
 
 	const steps = [
 		{ number: 1, title: 'Thông tin cơ bản' },
@@ -419,9 +433,15 @@ const PostRoomPage = () => {
 													{errors.price.message}
 												</p>
 											)}
-											{priceEstimate && (
+											{isPriceLoading && (
+												<div className='rounded-lg p-4 text-sm border bg-gray-50 border-gray-200 animate-pulse mt-3'>
+													<div className='h-4 bg-gray-200 rounded w-3/4 mb-2'></div>
+													<div className='h-3 bg-gray-200 rounded w-1/2'></div>
+												</div>
+											)}
+											{priceEstimate && !isPriceLoading && (
 												<div
-													className={`rounded-lg p-4 text-sm border ${
+													className={`rounded-lg p-4 text-sm border mt-3 animate-in fade-in slide-in-from-top-2 duration-300 ${
 														priceEstimate.currentPriceStatus === 'fair' ?
 															'bg-green-50 border-green-200'
 														: priceEstimate.currentPriceStatus === 'high' ?

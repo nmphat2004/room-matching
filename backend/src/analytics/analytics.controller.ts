@@ -53,11 +53,18 @@ export class AnalyticsController {
     summary: 'Resolve address or Google Maps URL to coordinates',
   })
   async geocode(@Query('address') address: string) {
+    // Detect Google Maps URLs (full links, shortened links, app share links)
     if (
       address.includes('google.com/maps') ||
-      address.includes('goo.gl/maps')
+      address.includes('goo.gl/maps') ||
+      address.includes('maps.app.goo.gl') ||
+      address.includes('maps.google.com')
     ) {
-      return this.geocodingService.resolveGoogleMapsUrl(address);
+      const result = await this.geocodingService.resolveGoogleMapsUrl(address);
+      if (result) return result;
     }
+
+    // Fallback: geocode plain text address via Nominatim
+    return this.geocodingService.geocodeAddress(address);
   }
 }
