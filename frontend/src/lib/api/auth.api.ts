@@ -29,3 +29,36 @@ export const refreshToken = async (token: string) => {
 	);
 	return res.data;
 };
+
+export const googleLogin = async (idToken: string) => {
+	const res = await api.post<AuthResponse>('/auth/google', { idToken });
+	return res.data;
+};
+
+export const forgotPassword = async (email: string) => {
+	const res = await api.post<{ message: string }>('/auth/forgot-password', {
+		email,
+	});
+	return res.data;
+};
+
+export const verifyResetCode = async (email: string, code: string) => {
+	const res = await api.post<{ valid: boolean }>('/auth/verify-reset-code', {
+		email,
+		code,
+	});
+	return res.data;
+};
+
+export const resetPassword = async (
+	email: string,
+	code: string,
+	newPassword: string,
+) => {
+	const res = await api.post<{ message: string }>('/auth/reset-password', {
+		email,
+		code,
+		newPassword,
+	});
+	return res.data;
+};

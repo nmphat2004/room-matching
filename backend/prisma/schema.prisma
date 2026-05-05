@@ -23,7 +23,8 @@ model User {
   id           String   @id @default(uuid())
   fullName     String
   email        String   @unique
-  passwordHash String
+  passwordHash String?
+  googleId     String?  @unique
   role         Role     @default(RENTER)
   phone        String?
   avatarUrl    String?
@@ -229,4 +230,16 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notification_preferences")
+}
+
+model PasswordResetCode {
+  id        String   @id @default(uuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email, code])
+  @@map("password_reset_codes")
 }

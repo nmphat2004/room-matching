@@ -2,7 +2,7 @@
 import RoomCard from '@/components/room/room-card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { districts, priceRanges, roomTypesList } from '@/data/data';
+import { hcmDistricts, priceRanges, roomTypesList } from '@/data/data';
 import { getRooms } from '@/lib/api/room.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useQuery } from '@tanstack/react-query';
@@ -137,9 +137,9 @@ const HomePage = () => {
 									onChange={(e) => setSearchDistrict(e.target.value)}
 									className='w-full px-3 py-2.5 outline-none rounded-lg bg-gray-50 border border-gray-200 focus:border-primary transition-colors focus:ring-1 focus:ring-primary'>
 									<option value=''>Tất cả Quận/Huyện</option>
-									{districts.map((district) => (
-										<option key={district} value={district}>
-											{district}
+									{hcmDistricts.map((d) => (
+										<option key={d.name} value={d.name}>
+											{d.name}
 										</option>
 									))}
 								</select>

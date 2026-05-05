@@ -31,13 +31,16 @@ export class PriceEstimatorService {
     currentPrice?: number,
   ): Promise<PriceEstimate> {
     // Lấy dữ liệu phòng cùng khu vực để train
-    const trainingData = await this.getTrainingData(address);
+    const rawData = await this.getTrainingData(address);
+
+    // Lọc outlier trước khi train
+    const trainingData = this.removeOutliers(rawData);
 
     let coefficients: Coefficients;
     let estimated: number;
 
     if (trainingData.length >= 5) {
-      // Đủ data → train Linear Regression
+      // Đủ data → train Linear Regression (OLS đa biến đúng)
       coefficients = this.trainOLS(trainingData);
       estimated = this.predict(coefficients, area, amenityCount, floor);
     } else {
@@ -90,8 +93,30 @@ export class PriceEstimatorService {
     };
   }
 
-  // ── Ordinary Least Squares (OLS) ─────────────────────────────
-  // Tìm hệ số b₀, b₁, b₂, b₃ tối thiểu hóa Σ(yᵢ - ŷᵢ)²
+  // ── Loại bỏ outlier bằng IQR ──────────────────────────────────
+  // Loại các phòng có giá nằm ngoài [Q1 - 1.5×IQR, Q3 + 1.5×IQR]
+  private removeOutliers(
+    data: {
+      price: number;
+      area: number;
+      amenityCount: number;
+      floor: number;
+    }[],
+  ) {
+    if (data.length < 4) return data;
+
+    const prices = data.map((d) => d.price).sort((a, b) => a - b);
+    const q1 = prices[Math.floor(prices.length * 0.25)];
+    const q3 = prices[Math.floor(prices.length * 0.75)];
+    const iqr = q3 - q1;
+    const lower = q1 - 1.5 * iqr;
+    const upper = q3 + 1.5 * iqr;
+
+    return data.filter((d) => d.price >= lower && d.price <= upper);
+  }
+
+  // ── Ordinary Least Squares (OLS) đa biến ─────────────────────
+  // Giải Normal Equation: β = (XᵀX)⁻¹ Xᵀy
   // y = b₀ + b₁×area + b₂×amenity + b₃×floor
   private trainOLS(
     data: {
@@ -102,47 +127,107 @@ export class PriceEstimatorService {
     }[],
   ): Coefficients {
     const n = data.length;
+    const p = 4; // số tham số: intercept, area, amenity, floor
 
-    // Tính giá trị trung bình
-    const mPrice = data.reduce((s, d) => s + d.price, 0) / n;
-    const mArea = data.reduce((s, d) => s + d.area, 0) / n;
-    const mAmenity = data.reduce((s, d) => s + d.amenityCount, 0) / n;
-    const mFloor = data.reduce((s, d) => s + d.floor, 0) / n;
+    // Xây dựng ma trận X (n×4) và vector y (n×1)
+    // Mỗi hàng X[i] = [1, area, amenityCount, floor]
+    const X: number[][] = data.map((d) => [1, d.area, d.amenityCount, d.floor]);
+    const y: number[] = data.map((d) => d.price);
 
-    // Tính covariance và variance
-    let covAreaPrice = 0,
-      covAmenityPrice = 0,
-      covFloorPrice = 0;
-    let varArea = 0,
-      varAmenity = 0,
-      varFloor = 0;
+    // Tính XᵀX (4×4)
+    const XtX: number[][] = Array.from({ length: p }, () => Array(p).fill(0));
+    for (let i = 0; i < p; i++) {
+      for (let j = 0; j < p; j++) {
+        let sum = 0;
+        for (let k = 0; k < n; k++) {
+          sum += X[k][i] * X[k][j];
+        }
+        XtX[i][j] = sum;
+      }
+    }
 
-    data.forEach((d) => {
-      const da = d.area - mArea;
-      const dm = d.amenityCount - mAmenity;
-      const df = d.floor - mFloor;
-      const dp = d.price - mPrice;
+    // Tính Xᵀy (4×1)
+    const Xty: number[] = Array(p).fill(0);
+    for (let i = 0; i < p; i++) {
+      let sum = 0;
+      for (let k = 0; k < n; k++) {
+        sum += X[k][i] * y[k];
+      }
+      Xty[i] = sum;
+    }
 
-      covAreaPrice += da * dp;
-      covAmenityPrice += dm * dp;
-      covFloorPrice += df * dp;
-      varArea += da * da;
-      varAmenity += dm * dm;
-      varFloor += df * df;
-    });
+    // Giải hệ (XᵀX)β = Xᵀy bằng Gauss-Jordan elimination
+    const beta = this.solveLinearSystem(XtX, Xty);
 
-    // Hệ số hồi quy
-    const b1 = varArea > 0 ? covAreaPrice / varArea : 80_000;
-    const b2 = varAmenity > 0 ? covAmenityPrice / varAmenity : 150_000;
-    const b3 = varFloor > 0 ? covFloorPrice / varFloor : 30_000;
-    const b0 = mPrice - b1 * mArea - b2 * mAmenity - b3 * mFloor;
+    if (!beta) {
+      // Ma trận suy biến → fallback hệ số mặc định
+      return {
+        intercept: 500_000,
+        area: 80_000,
+        amenity: 150_000,
+        floor: 30_000,
+      };
+    }
 
+    // Clamp hệ số để đảm bảo ý nghĩa kinh tế:
+    // - area >= 0 (phòng lớn hơn phải đắt hơn hoặc bằng)
+    // - amenity >= 0 (nhiều tiện ích hơn phải đắt hơn hoặc bằng)
+    // - floor: cho phép âm (tầng cao có thể rẻ hơn do không thang máy)
     return {
-      intercept: Math.round(b0),
-      area: Math.round(b1),
-      amenity: Math.round(b2),
-      floor: Math.round(b3),
+      intercept: Math.round(beta[0]),
+      area: Math.round(Math.max(0, beta[1])),
+      amenity: Math.round(Math.max(0, beta[2])),
+      floor: Math.round(beta[3]),
     };
+  }
+
+  // ── Gauss-Jordan Elimination ──────────────────────────────────
+  // Giải hệ phương trình tuyến tính Ax = b
+  // Trả về null nếu ma trận suy biến (singular)
+  private solveLinearSystem(A: number[][], b: number[]): number[] | null {
+    const n = A.length;
+
+    // Tạo augmented matrix [A | b]
+    const aug: number[][] = A.map((row, i) => [...row, b[i]]);
+
+    for (let col = 0; col < n; col++) {
+      // Partial pivoting: tìm hàng có |A[row][col]| lớn nhất
+      let maxRow = col;
+      let maxVal = Math.abs(aug[col][col]);
+      for (let row = col + 1; row < n; row++) {
+        if (Math.abs(aug[row][col]) > maxVal) {
+          maxVal = Math.abs(aug[row][col]);
+          maxRow = row;
+        }
+      }
+
+      // Swap rows
+      if (maxRow !== col) {
+        [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+      }
+
+      const pivot = aug[col][col];
+      if (Math.abs(pivot) < 1e-10) {
+        return null; // ma trận suy biến
+      }
+
+      // Chia hàng pivot cho pivot value
+      for (let j = col; j <= n; j++) {
+        aug[col][j] /= pivot;
+      }
+
+      // Khử các hàng khác
+      for (let row = 0; row < n; row++) {
+        if (row === col) continue;
+        const factor = aug[row][col];
+        for (let j = col; j <= n; j++) {
+          aug[row][j] -= factor * aug[col][j];
+        }
+      }
+    }
+
+    // Kết quả nằm ở cột cuối
+    return aug.map((row) => row[n]);
   }
 
   private predict(
@@ -171,6 +256,7 @@ export class PriceEstimatorService {
         }),
       },
       include: { amenities: true },
+      orderBy: { createdAt: 'desc' },
       take: 100,
     });
 
@@ -184,7 +270,7 @@ export class PriceEstimatorService {
 
   private extractDistrict(address: string): string {
     const match = address.match(
-      /Quận\s+\d+|Quận\s+[A-Za-zÀ-ỹ]+|Bình Thạnh|Gò Vấp|Tân Bình|Phú Nhuận|Thủ Đức/i,
+      /Quận\s+\d+|Quận\s+[A-Za-zÀ-ỹ]+|Huyện\s+[A-Za-zÀ-ỹ]+|Bình Thạnh|Gò Vấp|Tân Bình|Phú Nhuận|Thủ Đức|Bình Tân|Tân Phú|Bình Chánh|Hóc Môn|Nhà Bè|Cần Giờ|Củ Chi|Ba Đình|Hoàn Kiếm|Đống Đa|Hai Bà Trưng|Cầu Giấy|Thanh Xuân|Hoàng Mai|Long Biên|Nam Từ Liêm|Bắc Từ Liêm|Hà Đông|Tây Hồ/i,
     );
     return match ? match[0] : '';
   }

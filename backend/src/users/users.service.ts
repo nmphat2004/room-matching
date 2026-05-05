@@ -58,6 +58,45 @@ export class UserService {
     });
   }
 
+  async findByGoogleId(googleId: string) {
+    return this.prisma.user.findFirst({
+      where: { googleId, isDeleted: false },
+    });
+  }
+
+  async createGoogleUser(data: {
+    googleId: string;
+    fullName: string;
+    email: string;
+    avatarUrl?: string;
+  }) {
+    return this.prisma.user.create({
+      data: {
+        googleId: data.googleId,
+        fullName: data.fullName,
+        email: data.email,
+        avatarUrl: data.avatarUrl,
+        passwordHash: null,
+        role: 'RENTER',
+      },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+      },
+    });
+  }
+
+  async updatePasswordHash(email: string, newPassword: string) {
+    const hashed = await bcrypt.hash(newPassword, 10);
+    return this.prisma.user.update({
+      where: { email },
+      data: { passwordHash: hashed },
+    });
+  }
+
   async update(
     id: string,
     data: { fullName?: string; phone?: string; avatarUrl?: string },
@@ -93,7 +132,7 @@ export class UserService {
       where: { id },
       select: { id: true, passwordHash: true },
     });
-    if (!user) throw new UnauthorizedException('Invalid Credentials');
+    if (!user || !user.passwordHash) throw new UnauthorizedException('Invalid Credentials');
 
     const isMatch = await bcrypt.compare(
       data.currentPassword,

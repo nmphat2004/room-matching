@@ -36,3 +36,39 @@ export class LoginDto {
   @IsNotEmpty()
   password: string;
 }
+
+export class GoogleLoginDto {
+  @ApiProperty({ example: 'eyJhbGciOiJSUzI1NiIs...' })
+  @IsNotEmpty()
+  idToken: string;
+}
+
+export class ForgotPasswordDto {
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
+  email: string;
+}
+
+export class VerifyResetCodeDto {
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsNotEmpty()
+  code: string;
+}
+
+export class ResetPasswordDto {
+  @ApiProperty({ example: 'user@example.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsNotEmpty()
+  code: string;
+
+  @ApiProperty({ example: 'newPassword123', minLength: 6 })
+  @MinLength(6)
+  newPassword: string;
+}
