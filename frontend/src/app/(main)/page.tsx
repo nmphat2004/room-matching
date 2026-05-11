@@ -1,5 +1,6 @@
 'use client';
 import RoomCard from '@/components/room/room-card';
+import RoomRecommendations from '@/components/room/room-recommendation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { hcmDistricts, priceRanges, roomTypesList } from '@/data/data';
@@ -255,6 +256,9 @@ const HomePage = () => {
 					))}
 				</div>
 			</section>
+
+			{/* AI Recommendations */}
+			<RoomRecommendations />
 
 			{/* Quick categories */}
 			<section className='bg-secondary/30 py-12'>

@@ -8,7 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Check, GripVertical, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useId, useState } from 'react';
+import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+	type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import z from 'zod';
@@ -48,15 +65,98 @@ const roomSchema = z.object({
 
 type RoomFormData = z.infer<typeof roomSchema>;
 
+interface UploadedImage {
+	id: string;
+	file: File;
+	preview: string;
+}
+
+// ── Sortable Image Item ──────────────────────────────────────────
+const SortableImageItem = ({
+	image,
+	index,
+	onRemove,
+}: {
+	image: UploadedImage;
+	index: number;
+	onRemove: (index: number) => void;
+}) => {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: image.id });
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1,
+		zIndex: isDragging ? 50 : 'auto' as any,
+	};
+
+	return (
+		<div ref={setNodeRef} style={style} className='relative group'>
+			<Image
+				src={image.preview}
+				width='200'
+				height='200'
+				alt={`Upload ${index + 1}`}
+				className='w-full h-32 object-cover rounded-lg'
+				draggable={false}
+			/>
+			<div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2'>
+				<button
+					type='button'
+					className='p-2 bg-white rounded-full hover:scale-110 transition-transform cursor-grab active:cursor-grabbing'
+					{...attributes}
+					{...listeners}>
+					<GripVertical className='w-4 h-4' />
+				</button>
+				<button
+					type='button'
+					onClick={() => onRemove(index)}
+					className='p-2 bg-white rounded-full hover:scale-110 transition-transform'>
+					<X className='w-4 h-4 text-destructive' />
+				</button>
+			</div>
+			{index === 0 && (
+				<Badge
+					variant='secondary'
+					className='absolute top-2 left-2 text-xs'>
+					Ảnh bìa
+				</Badge>
+			)}
+		</div>
+	);
+};
+
 const PostRoomPage = () => {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const { user, isLoading: authLoading } = useAuthStore();
 	const [currentStep, setCurrentStep] = useState(1);
 	const [isLoading, setIsLoading] = useState(false);
-	const [uploadedImages, setUploadedImages] = useState<
-		{ file: File; preview: string }[]
-	>([]);
+	const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+	const dndId = useId();
+
+	// DnD sensors
+	const sensors = useSensors(
+		useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+		useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+	);
+
+	const handleDragEnd = useCallback((event: DragEndEvent) => {
+		const { active, over } = event;
+		if (!over || active.id === over.id) return;
+		setUploadedImages((images) => {
+			const oldIndex = images.findIndex((img) => img.id === active.id);
+			const newIndex = images.findIndex((img) => img.id === over.id);
+			return arrayMove(images, oldIndex, newIndex);
+		});
+	}, []);
 
 	const [priceEstimate, setPriceEstimate] = useState<any>(null);
 	const [isPriceLoading, setIsPriceLoading] = useState(false);
@@ -191,15 +291,16 @@ const PostRoomPage = () => {
 		const files = e.target.files;
 		if (files) {
 			const newImages = Array.from(files).map((file) => ({
+				id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
 				file,
 				preview: URL.createObjectURL(file),
 			}));
-			setUploadedImages([...uploadedImages, ...newImages]);
+			setUploadedImages((prev) => [...prev, ...newImages]);
 		}
 	};
 
 	const removeImage = (index: number) => {
-		setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+		setUploadedImages((prev) => prev.filter((_, i) => i !== index));
 	};
 
 	const onSubmit = async (data: RoomFormData) => {
@@ -476,7 +577,19 @@ const PostRoomPage = () => {
 														<p className='text-xs text-gray-400 mt-1'>
 															Dựa trên {priceEstimate.similarRoomsCount} phòng
 															tương tự trong khu vực
+															{priceEstimate.method === 'ai' && ' + AI'}
+															{priceEstimate.method === 'hybrid' && ' + AI xác thực'}
 														</p>
+													)}
+													{priceEstimate.aiInsight && (
+														<div className='mt-2 pt-2 border-t border-gray-200'>
+															<p className='text-xs font-medium text-purple-700 flex items-center gap-1'>
+																<span>🤖</span> AI nhận xét:
+															</p>
+															<p className='text-xs text-gray-600 mt-0.5'>
+																{priceEstimate.aiInsight}
+															</p>
+														</div>
 													)}
 												</div>
 											)}
@@ -627,42 +740,29 @@ const PostRoomPage = () => {
 											<div className='flex items-center justify-between mb-3'>
 												<label>Đã tải lên {uploadedImages.length} ảnh</label>
 												<p className='text-sm text-muted-foreground'>
-													Kéo để sắp xếp
+													🖐️ Kéo để sắp xếp · Ảnh đầu tiên là ảnh bìa
 												</p>
 											</div>
-											<div className='grid grid-cols-3 gap-4'>
-												{uploadedImages.map((image, index) => (
-													<div key={index} className='relative group'>
-														<Image
-															src={image.preview}
-															width='200'
-															height='200'
-															alt={`Upload ${index + 1}`}
-															className='w-full h-32 object-cover rounded-lg'
-														/>
-														<div className='absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2'>
-															<button
-																type='button'
-																className='p-2 bg-white rounded-full hover:scale-110 transition-transform'>
-																<GripVertical className='w-4 h-4' />
-															</button>
-															<button
-																type='button'
-																onClick={() => removeImage(index)}
-																className='p-2 bg-white rounded-full hover:scale-110 transition-transform'>
-																<X className='w-4 h-4 text-destructive' />
-															</button>
-														</div>
-														{index === 0 && (
-															<Badge
-																variant='secondary'
-																className='absolute top-2 left-2 text-xs'>
-																Ảnh bìa
-															</Badge>
-														)}
+											<DndContext
+												id={dndId}
+												sensors={sensors}
+												collisionDetection={closestCenter}
+												onDragEnd={handleDragEnd}>
+												<SortableContext
+													items={uploadedImages.map((img) => img.id)}
+													strategy={rectSortingStrategy}>
+													<div className='grid grid-cols-3 gap-4'>
+														{uploadedImages.map((image, index) => (
+															<SortableImageItem
+																key={image.id}
+																image={image}
+																index={index}
+																onRemove={removeImage}
+															/>
+														))}
 													</div>
-												))}
-											</div>
+												</SortableContext>
+											</DndContext>
 										</div>
 									)}
 								</div>

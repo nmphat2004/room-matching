@@ -72,6 +72,8 @@ export interface Review {
 	locationRating: number;
 	comment?: string;
 	sentiment?: string;
+	isVerified?: boolean;
+	rentalVerified?: boolean;
 	createdAt: string;
 	reviewer: {
 		id: string;

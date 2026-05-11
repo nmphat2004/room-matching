@@ -7,22 +7,40 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/auth.store';
 import useSocket from '@/hooks/useSocket';
 import { useNotificationStore } from '@/stores/notification.store';
 import {
+	Bookmark,
+	ChevronDown,
 	Home,
 	LayoutDashboard,
 	LogOut,
 	MessageCircle,
 	PlusCircle,
+	Sparkles,
 	UploadIcon,
+	User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import NotificationBell from './notification-bell';
+
+const roleLabel: Record<string, string> = {
+	LANDLORD: 'Chủ trọ',
+	RENTER: 'Người thuê',
+	ADMIN: 'Quản trị',
+};
+
+const roleColor: Record<string, string> = {
+	LANDLORD:
+		'bg-gradient-to-r from-amber-500 to-orange-500 text-white',
+	RENTER: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white',
+	ADMIN: 'bg-gradient-to-r from-red-500 to-pink-500 text-white',
+};
 
 const Header = () => {
 	const { user, logout, isLoading } = useAuthStore();
@@ -36,30 +54,34 @@ const Header = () => {
 	};
 
 	return (
-		<header className='sticky top-0 z-50 bg-white border-b border-border'>
+		<header className='sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border/50 shadow-sm'>
 			<div className='flex max-w-7xl mx-auto px-4 py-4 items-center justify-between'>
 				{/* Logo */}
-				<Link href='/' className='flex items-center gap-2'>
-					<Home className='w-6 h-6 text-primary' />
-					<span className='text-xl'>Room Matching</span>
+				<Link href='/' className='flex items-center gap-2 group'>
+					<div className='w-8 h-8 bg-gradient-to-br from-primary to-blue-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow'>
+						<Home className='w-4 h-4 text-white' />
+					</div>
+					<span className='text-xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent'>
+						Room Matching
+					</span>
 				</Link>
 
 				{/* Nav */}
-				<nav className='hidden md:flex items-center gap-6'>
+				<nav className='hidden md:flex items-center gap-1'>
 					<Link
 						href='/rooms'
-						className='text-foreground hover:text-primary transition-colors'>
+						className='px-4 py-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200 font-medium'>
 						Tìm phòng
 					</Link>
 					<Link
 						href='/rooms?sortBy=rating'
-						className='text-foreground hover:text-primary transition-colors'>
+						className='px-4 py-2 rounded-lg text-foreground hover:text-primary hover:bg-primary/5 transition-all duration-200 font-medium'>
 						Đánh giá cao
 					</Link>
 				</nav>
 
 				{/* Auth buttons */}
-				<div className='flex items-center gap-3'>
+				<div className='flex items-center gap-2'>
 					{isLoading ?
 						<div className='flex items-center gap-3'>
 							<Skeleton className='w-10 h-10 rounded-md' />
@@ -69,10 +91,10 @@ const Header = () => {
 					: user ?
 						<>
 							<Link href='/chat'>
-								<Button variant='ghost' size='icon' className='relative'>
+								<Button variant='ghost' size='icon' className='relative rounded-xl hover:bg-primary/5'>
 									<MessageCircle className='w-5 h-5' />
 									{chatUnreadCount > 0 && (
-										<span className='absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white'>
+										<span className='absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white animate-pulse'>
 											{chatUnreadCount}
 										</span>
 									)}
@@ -80,40 +102,119 @@ const Header = () => {
 							</Link>
 							<NotificationBell />
 							<DropdownMenu>
-								<DropdownMenuTrigger>
-									<Avatar className='w-9 h-9 cursor-pointer'>
-										<AvatarImage src={user.avatarUrl} />
-										<AvatarFallback className='bg-blue-100 text-blue-600'>
-											{user.fullName?.charAt(0).toUpperCase()}
-										</AvatarFallback>
-									</Avatar>
+								<DropdownMenuTrigger className='outline-none'>
+									<div className='flex items-center gap-2 pl-2 pr-1 py-1 rounded-full hover:bg-secondary/80 transition-colors duration-200 cursor-pointer border border-transparent hover:border-border/50'>
+										<Avatar className='w-8 h-8 ring-2 ring-primary/20'>
+											<AvatarImage src={user.avatarUrl} />
+											<AvatarFallback className='bg-gradient-to-br from-primary to-blue-600 text-white text-sm font-bold'>
+												{user.fullName?.charAt(0).toUpperCase()}
+											</AvatarFallback>
+										</Avatar>
+										<ChevronDown className='w-3.5 h-3.5 text-muted-foreground hidden sm:block' />
+									</div>
 								</DropdownMenuTrigger>
-								<DropdownMenuContent align='end' className='w-48'>
+								<DropdownMenuContent
+									align='end'
+									className='w-72 p-0 rounded-2xl overflow-hidden shadow-2xl border border-border/50 bg-white/95 backdrop-blur-xl'>
+									{/* Profile Header */}
 									<Link href='/profile'>
-										<div className='px-3 py-2 border-b hover:bg-secondary'>
-											<p className='font-medium text-sm'>{user.fullName}</p>
-											<p className='text-gray-500 text-xs'>{user.email}</p>
+										<div className='px-4 py-4 bg-gradient-to-br from-slate-50 to-blue-50/50 hover:from-slate-100 hover:to-blue-100/50 transition-colors duration-300 cursor-pointer'>
+											<div className='flex items-center gap-3'>
+												<Avatar className='w-12 h-12 ring-2 ring-white shadow-md'>
+													<AvatarImage src={user.avatarUrl} />
+													<AvatarFallback className='bg-gradient-to-br from-primary to-blue-600 text-white font-bold text-lg'>
+														{user.fullName?.charAt(0).toUpperCase()}
+													</AvatarFallback>
+												</Avatar>
+												<div className='flex-1 min-w-0'>
+													<p className='font-semibold text-sm text-foreground truncate'>
+														{user.fullName}
+													</p>
+													<p className='text-xs text-muted-foreground truncate'>
+														{user.email}
+													</p>
+													<span
+														className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${roleColor[user.role] || 'bg-gray-100 text-gray-600'}`}>
+														<Sparkles className='w-2.5 h-2.5' />
+														{roleLabel[user.role] || user.role}
+													</span>
+												</div>
+											</div>
 										</div>
 									</Link>
-									{user.role === 'LANDLORD' && (
-										<>
-											<DropdownMenuItem
-												onClick={() => router.push('/dashboard')}>
-												<LayoutDashboard className='w-4 h-4 mr-2' />
-												Dashboard
-											</DropdownMenuItem>
-											<DropdownMenuItem onClick={() => router.push('/post')}>
-												<UploadIcon className='w-4 h-4 mr-2' />
-												Đăng tin mới
-											</DropdownMenuItem>
-										</>
-									)}
-									<DropdownMenuItem
-										onClick={handleLogout}
-										className='text-red-500'>
-										<LogOut className='w-4 h-4 mr-2' />
-										Đăng xuất
-									</DropdownMenuItem>
+
+									<DropdownMenuSeparator className='my-0' />
+
+									{/* Navigation Items */}
+									<div className='p-1.5'>
+										<DropdownMenuItem
+											onClick={() => router.push('/profile')}
+											className='rounded-xl px-3 py-2.5 cursor-pointer gap-3 group/item'>
+											<div className='w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center group-focus/item:bg-white/20 transition-colors'>
+												<User className='w-4 h-4 text-blue-600 group-focus/item:text-white' />
+											</div>
+											<div className='flex-1'>
+												<p className='text-sm font-medium'>Trang cá nhân</p>
+												<p className='text-xs text-muted-foreground group-focus/item:text-white/70'>Xem và chỉnh sửa hồ sơ</p>
+											</div>
+										</DropdownMenuItem>
+
+										<DropdownMenuItem
+											onClick={() => router.push('/profile?tab=saved')}
+											className='rounded-xl px-3 py-2.5 cursor-pointer gap-3 group/item'>
+											<div className='w-8 h-8 rounded-lg bg-rose-50 flex items-center justify-center group-focus/item:bg-white/20 transition-colors'>
+												<Bookmark className='w-4 h-4 text-rose-500 group-focus/item:text-white' />
+											</div>
+											<div className='flex-1'>
+												<p className='text-sm font-medium'>Phòng đã lưu</p>
+												<p className='text-xs text-muted-foreground group-focus/item:text-white/70'>Xem lại phòng yêu thích</p>
+											</div>
+										</DropdownMenuItem>
+
+										{user.role === 'LANDLORD' && (
+											<>
+												<DropdownMenuSeparator className='my-1' />
+
+												<DropdownMenuItem
+													onClick={() => router.push('/dashboard')}
+													className='rounded-xl px-3 py-2.5 cursor-pointer gap-3 group/item'>
+													<div className='w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center group-focus/item:bg-white/20 transition-colors'>
+														<LayoutDashboard className='w-4 h-4 text-emerald-600 group-focus/item:text-white' />
+													</div>
+													<div className='flex-1'>
+														<p className='text-sm font-medium'>Dashboard</p>
+														<p className='text-xs text-muted-foreground group-focus/item:text-white/70'>Quản lý phòng cho thuê</p>
+													</div>
+												</DropdownMenuItem>
+
+												<DropdownMenuItem
+													onClick={() => router.push('/post')}
+													className='rounded-xl px-3 py-2.5 cursor-pointer gap-3 group/item'>
+													<div className='w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center group-focus/item:bg-white/20 transition-colors'>
+														<UploadIcon className='w-4 h-4 text-violet-600 group-focus/item:text-white' />
+													</div>
+													<div className='flex-1'>
+														<p className='text-sm font-medium'>Đăng tin mới</p>
+														<p className='text-xs text-muted-foreground group-focus/item:text-white/70'>Tạo tin đăng phòng trọ</p>
+													</div>
+												</DropdownMenuItem>
+											</>
+										)}
+									</div>
+
+									<DropdownMenuSeparator className='my-0' />
+
+									{/* Logout */}
+									<div className='p-1.5'>
+										<DropdownMenuItem
+											onClick={handleLogout}
+											className='rounded-xl px-3 py-2.5 cursor-pointer gap-3 text-red-500 group/item'>
+											<div className='w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center group-focus/item:bg-red-500/20 transition-colors'>
+												<LogOut className='w-4 h-4 text-red-500' />
+											</div>
+											<span className='text-sm font-medium'>Đăng xuất</span>
+										</DropdownMenuItem>
+									</div>
 								</DropdownMenuContent>
 							</DropdownMenu>
 						</>

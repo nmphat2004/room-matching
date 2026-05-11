@@ -12,14 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getReviews } from '@/lib/api/review.api';
+import { getReviews, checkReviewEligibility } from '@/lib/api/review.api';
 import { getRoomById, getRooms } from '@/lib/api/room.api';
 import api from '@/lib/axios';
 import { formatRelativeTime } from '@/lib/time-format';
 import { getSavedRoomStatus, saveRoom, unsaveRoom } from '@/lib/api/user.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, Heart, MapPin, MessageCircle, Flag, BadgeCheck } from 'lucide-react';
+import { Eye, Heart, MapPin, MessageCircle, Flag, BadgeCheck, ShieldCheck, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -61,6 +61,13 @@ const RoomDetailPage = () => {
 		enabled: !!id,
 	});
 
+
+
+	const { data: reviewEligibility } = useQuery({
+		queryKey: ['review-eligibility', id, user?.id],
+		queryFn: () => checkReviewEligibility(id as string),
+		enabled: Boolean(id) && Boolean(user) && user?.id !== room?.owner?.id,
+	});
 	const { data: savedRoomStatus } = useQuery({
 		queryKey: ['saved-room-status', id, user?.id],
 		queryFn: () => getSavedRoomStatus(id as string),
@@ -163,8 +170,8 @@ const RoomDetailPage = () => {
 	const latestRooms =
 		latestRoomsData?.data?.filter((item) => item.id !== room.id).slice(0, 4) ||
 		[];
-	const mapLat = geocodeResult?.lat;
-	const mapLng = geocodeResult?.lng;
+	const mapLat = room?.lat ?? geocodeResult?.lat;
+	const mapLng = room?.lng ?? geocodeResult?.lng;
 	const hasMapCoordinates = Number.isFinite(mapLat) && Number.isFinite(mapLng);
 
 	return (
@@ -403,8 +410,16 @@ const RoomDetailPage = () => {
 													</p>
 												</div>
 											</div>
-											<div className='px-2 py-1 bg-primary/10 rounded-lg'>
+											<div className='flex items-center gap-2'>
+												{review.rentalVerified && (
+													<Badge variant='secondary' className='text-[10px] font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-100 gap-1'>
+														<ShieldCheck className='w-3 h-3' />
+														Đã thuê
+													</Badge>
+												)}
+												<div className='px-2 py-1 bg-primary/10 rounded-lg'>
 												<StarRating rating={review.rating} size='sm' />
+											</div>
 											</div>
 										</div>
 										<p className='text-sm text-foreground/80 italic line-clamp-3'>
@@ -435,10 +450,21 @@ const RoomDetailPage = () => {
 							{user && user.id !== room.owner.id && (
 								<div className='pt-6 border-t'>
 									<h3 className='text-lg font-bold mb-4'>Viết đánh giá</h3>
-									<ReviewForm roomId={room.id} />
+									{reviewEligibility?.eligible === false ? (
+										<div className='flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl'>
+											<AlertCircle className='w-5 h-5 text-amber-500 shrink-0 mt-0.5' />
+											<div>
+												<p className='text-sm font-medium text-amber-800'>Không thể đánh giá</p>
+												<p className='text-xs text-amber-600 mt-1'>{reviewEligibility.reason}</p>
+											</div>
+										</div>
+									) : (
+										<ReviewForm roomId={room.id} />
+									)}
 								</div>
 							)}
 						</div>
+
 
 						{sameAreaRooms.length > 0 && (
 							<section className='space-y-4 rounded-2xl border border-border bg-card p-4 md:p-5'>

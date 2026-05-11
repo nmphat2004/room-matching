@@ -61,6 +61,53 @@ export class ReviewsService {
     };
   }
 
+  // Kiểm tra user có đủ điều kiện đánh giá phòng không
+  // Điều kiện: user phải đã nhắn tin với chủ phòng về phòng đó (có Conversation)
+  async checkReviewEligibility(
+    roomId: string,
+    userId: string,
+  ): Promise<{ eligible: boolean; reason?: string }> {
+    const room = await this.prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) throw new NotFoundException('Room not found');
+
+    // Chủ phòng không được đánh giá phòng mình
+    if (room.ownerId === userId) {
+      return {
+        eligible: false,
+        reason: 'Bạn không thể đánh giá phòng của chính mình',
+      };
+    }
+
+    // Kiểm tra đã đánh giá chưa
+    const existing = await this.prisma.review.findFirst({
+      where: { roomId, reviewerId: userId },
+    });
+    if (existing) {
+      return {
+        eligible: false,
+        reason: 'Bạn đã đánh giá phòng này rồi',
+      };
+    }
+
+    // Kiểm tra có conversation (đã nhắn tin) với chủ phòng về phòng này không
+    const conversation = await this.prisma.conversation.findFirst({
+      where: {
+        roomId,
+        renterId: userId,
+      },
+    });
+
+    if (!conversation) {
+      return {
+        eligible: false,
+        reason:
+          'Bạn cần liên hệ với chủ phòng trước khi có thể đánh giá. Hãy nhắn tin để trao đổi về phòng.',
+      };
+    }
+
+    return { eligible: true };
+  }
+
   async create(roomId: string, reviewerId: string, dto: CreateReviewDto) {
     const room = await this.prisma.room.findUnique({ where: { id: roomId } });
     if (!room) throw new NotFoundException('Room not found');
@@ -75,6 +122,20 @@ export class ReviewsService {
 
     if (existing)
       throw new BadRequestException('You have already reviewed this room');
+
+    // Kiểm tra conversation (đã nhắn tin với chủ phòng)
+    const conversation = await this.prisma.conversation.findFirst({
+      where: {
+        roomId,
+        renterId: reviewerId,
+      },
+    });
+
+    if (!conversation) {
+      throw new ForbiddenException(
+        'Bạn cần liên hệ với chủ phòng trước khi có thể đánh giá. Hãy nhắn tin để trao đổi về phòng.',
+      );
+    }
 
     const fraudResult = await this.fakeReviewService.analyze(
       reviewerId,
@@ -100,6 +161,7 @@ export class ReviewsService {
         locationRating: dto.locationRating,
         comment: dto.comment,
         isVerified: fraudResult.action === 'approve',
+        rentalVerified: true, // Đã qua kiểm tra conversation
       },
       include: {
         reviewer: { select: { id: true, fullName: true, avatarUrl: true } },

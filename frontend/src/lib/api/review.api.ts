@@ -13,3 +13,10 @@ export const createReview = async (roomId: string, data: any) => {
 	const res = await api.post(`/rooms/${roomId}/reviews`, data);
 	return res.data;
 };
+
+export const checkReviewEligibility = async (roomId: string) => {
+	const res = await api.get<{ eligible: boolean; reason?: string }>(
+		`/rooms/${roomId}/reviews/eligibility`,
+	);
+	return res.data;
+};

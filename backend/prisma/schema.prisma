@@ -127,6 +127,7 @@ model Review {
   comment        String?
   sentiment      String?
   isVerified     Boolean  @default(false)
+  rentalVerified Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   room     Room @relation(fields: [roomId], references: [id], onDelete: Cascade)

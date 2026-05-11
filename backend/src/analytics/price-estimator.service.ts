@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AiService } from './ai.service';
 
 export interface Coefficients {
   intercept: number;
@@ -17,11 +18,16 @@ export interface PriceEstimate {
   suggestion: string;
   similarRoomsCount: number;
   coefficients: Coefficients; // để hiển thị trong báo cáo
+  method: 'ols' | 'ai' | 'hybrid';
+  aiInsight?: string;
 }
 
 @Injectable()
 export class PriceEstimatorService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private aiService: AiService,
+  ) {}
 
   async estimate(
     area: number,
@@ -38,6 +44,7 @@ export class PriceEstimatorService {
 
     let coefficients: Coefficients;
     let estimated: number;
+    let method: PriceEstimate['method'] = 'ols';
 
     if (trainingData.length >= 5) {
       // Đủ data → train Linear Regression (OLS đa biến đúng)
@@ -52,9 +59,54 @@ export class PriceEstimatorService {
         floor: 30_000,
       };
       estimated = this.predict(coefficients, area, amenityCount, floor);
+      method = 'ai'; // sẽ dùng AI để điều chỉnh
     }
 
     // Giới hạn hợp lý
+    estimated = Math.max(500_000, Math.min(50_000_000, estimated));
+
+    // ── AI Enhancement: validate/adjust giá ước tính ──────────────
+    let aiInsight: string | undefined;
+    try {
+      const aiResult = await this.aiEnhancedEstimate(
+        area,
+        amenityCount,
+        floor,
+        address,
+        estimated,
+        trainingData.length,
+        currentPrice,
+      );
+
+      if (aiResult) {
+        // Nếu AI đề xuất giá khác biệt > 20% so với OLS, dùng trung bình
+        if (
+          aiResult.adjustedPrice &&
+          Math.abs(aiResult.adjustedPrice - estimated) / estimated > 0.2
+        ) {
+          if (trainingData.length >= 5) {
+            // Có đủ data OLS → lấy trung bình giữa OLS và AI
+            estimated = Math.round((estimated + aiResult.adjustedPrice) / 2);
+            method = 'hybrid';
+          } else {
+            // Không đủ data → tin AI hơn
+            estimated = aiResult.adjustedPrice;
+            method = 'ai';
+          }
+        } else if (aiResult.adjustedPrice && trainingData.length < 5) {
+          // Ít data → ưu tiên AI
+          estimated = aiResult.adjustedPrice;
+          method = 'ai';
+        }
+
+        aiInsight = aiResult.insight;
+      }
+    } catch (err) {
+      console.error('AI price enhancement failed:', err);
+      // Fallback: dùng kết quả OLS thuần
+    }
+
+    // Giới hạn lại sau AI adjustment
     estimated = Math.max(500_000, Math.min(50_000_000, estimated));
 
     const minPrice = Math.round(estimated * 0.85);
@@ -90,7 +142,60 @@ export class PriceEstimatorService {
       ),
       similarRoomsCount: trainingData.length,
       coefficients,
+      method,
+      aiInsight,
     };
+  }
+
+  // ── AI Enhancement Layer ───────────────────────────────────────
+  // Sử dụng Gemini để validate/adjust kết quả thuật toán
+  private async aiEnhancedEstimate(
+    area: number,
+    amenityCount: number,
+    floor: number,
+    address: string,
+    olsEstimate: number,
+    sampleSize: number,
+    currentPrice?: number,
+  ): Promise<{ adjustedPrice: number | null; insight: string } | null> {
+    const district = this.extractDistrict(address);
+
+    const prompt = `Bạn là chuyên gia định giá phòng trọ tại Việt Nam. Phân tích và đưa ra giá thuê hợp lý cho phòng trọ sau:
+
+THÔNG TIN PHÒNG:
+- Diện tích: ${area}m²
+- Số tiện nghi: ${amenityCount} (VD: điều hòa, máy giặt, tủ lạnh, v.v.)
+- Tầng: ${floor}
+- Khu vực: ${address}
+${district ? `- Quận/Huyện: ${district}` : ''}
+${currentPrice ? `- Giá chủ nhà đang đặt: ${currentPrice.toLocaleString('vi-VN')}đ/tháng` : ''}
+
+THAM KHẢO THUẬT TOÁN:
+- Giá ước tính bằng hồi quy tuyến tính: ${olsEstimate.toLocaleString('vi-VN')}đ/tháng
+- Dựa trên ${sampleSize} phòng tương tự trong khu vực
+
+YÊU CẦU: Trả về JSON duy nhất (không markdown, không giải thích thêm) với format:
+{"adjustedPrice": <số nguyên giá đề xuất VND/tháng hoặc null nếu đồng ý với thuật toán>, "insight": "<1-2 câu nhận xét ngắn gọn bằng tiếng Việt về mức giá, phù hợp hiển thị cho chủ nhà>"}`;
+
+    const result = await this.aiService.generateText(prompt);
+    if (!result) return null;
+
+    try {
+      // Parse JSON từ response (có thể có markdown wrapper)
+      const jsonMatch = result.match(/\{[\s\S]*?\}/);
+      if (!jsonMatch) return null;
+
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        adjustedPrice:
+          typeof parsed.adjustedPrice === 'number'
+            ? Math.round(parsed.adjustedPrice)
+            : null,
+        insight: parsed.insight || '',
+      };
+    } catch {
+      return null;
+    }
   }
 
   // ── Loại bỏ outlier bằng IQR ──────────────────────────────────

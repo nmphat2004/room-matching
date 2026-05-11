@@ -31,6 +31,14 @@ export class ReviewsController {
     return this.reviewsService.findByRoom(roomId, page, limit);
   }
 
+  @Get('eligibility')
+  @ApiOperation({ summary: 'Check if user can review this room' })
+  @ApiBearerAuth()
+  @UseGuards(JwtGuard)
+  checkEligibility(@Param('roomId') roomId: string, @Req() req: any) {
+    return this.reviewsService.checkReviewEligibility(roomId, req.user.id);
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a review' })
   @ApiBearerAuth()
